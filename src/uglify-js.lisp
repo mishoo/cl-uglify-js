@@ -31,13 +31,13 @@
                     (return)))))))
 
 (defun scope-has (scope name)
-  (loop :for s = scope :then (scope-parent scope) :do
-     (when (gethash name (scope-names scope))
+  (loop :for s = scope :then (scope-parent s) :do
+     (when (gethash name (scope-names s))
        (return s))))
 
 (defun scope-has-mangled (scope mname)
-  (loop :for s = scope :then (scope-parent scope) :do
-     (when (gethash mname (scope-rev-mangled scope))
+  (loop :for s = scope :then (scope-parent s) :do
+     (when (gethash mname (scope-rev-mangled s))
        (return s))))
 
 (defun scope-next-mangled (scope)
@@ -129,18 +129,18 @@
          (not (member name reserved :test #'string=)))))
 
 (defun scope-get-mangled (scope name &optional make)
-  (block this
+  (block nil
     (when (or (scope-uses-with scope)
               (scope-uses-eval scope))
-      (return-from this name))
+      (return name))
     (let ((s (scope-has scope name)))
       (when (not s)
-        (return-from this name))
+        (return name))
       (multiple-value-bind (m already) (gethash name (scope-mangled s))
         (when already
-          (return-from this m))))
+          (return m))))
     (unless make
-      (return-from this name))
+      (return name))
     (let ((m (scope-next-mangled scope)))
       (setf (gethash name (scope-mangled scope)) m
             (gethash m (scope-rev-mangled scope)) name)
