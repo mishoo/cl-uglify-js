@@ -23,12 +23,12 @@
 
 (let ((digits "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$_"))
   (defun base54 (num)
-    (reverse (with-output-to-string (out)
-               (loop :do
-                  (write-char (char digits (mod num 54)) out)
-                  (setq num (floor (/ num 54)))
-                  (when (= num 0)
-                    (return)))))))
+    (nreverse (with-output-to-string (out)
+                (loop :do
+                   (write-char (char digits (mod num 54)) out)
+                   (setq num (floor (/ num 54)))
+                   (when (= num 0)
+                     (return)))))))
 
 (defun scope-has (scope name)
   (loop :for s = scope :then (scope-parent s) :do
@@ -43,19 +43,17 @@
 (defun scope-next-mangled (scope)
   (tagbody
    next
-     (let ((m (base54 (incf (scope-cname scope))))
-           prior)
-       (setq prior (scope-has-mangled scope m))
-       (when (and prior
-                  (eq prior (gethash (gethash m (scope-rev-mangled prior))
-                                     (scope-refs scope))))
-         (go next))
-       (setq prior (scope-has scope m))
-       (when (and prior
-                  (not (eq prior scope))
-                  (eq (gethash m (scope-refs scope)) prior)
-                  (not (scope-has-mangled prior m)))
-         (go next))
+     (let ((m (base54 (incf (scope-cname scope)))))
+       (let (prior)
+         (when (and (setq prior (scope-has-mangled scope m))
+                    (eq prior (gethash (gethash m (scope-rev-mangled prior))
+                                       (scope-refs scope))))
+           (go next))
+         (when (and (setq prior (scope-has scope m))
+                    (not (eq prior scope))
+                    (eq (gethash m (scope-refs scope)) prior)
+                    (not (scope-has-mangled prior m)))
+           (go next)))
        (multiple-value-bind (val has)
            (gethash m (scope-refs scope))
          (when (and has (not val))
