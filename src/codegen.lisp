@@ -230,6 +230,7 @@ characters in string S to STREAM."
                                  (add-spaces (parenthesize cond :assign :seq)
                                              "?"
                                              (parenthesize then :seq)
+                                             ":"
                                              (parenthesize else :seq)))
 
                    (:call (expr args)
