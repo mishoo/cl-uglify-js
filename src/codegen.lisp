@@ -145,21 +145,21 @@ characters in string S to STREAM."
                           (stick (walk stmt) ";"))
 
                    (:array (a)
-                           (add-spaces "[" (join (mapcar #'walk a) ", " ",") "]"))
+                           (if (not a) "[]"
+                               (add-spaces "[" (join (mapcar #'walk a) ", " ",") "]")))
 
                    (:object (props)
-                            (cond
-                              ((null props) "{}")
-                              (t (join `("{"
-                                         ,(join (with-indent 1
-                                                  (mapcar (lambda (p)
-                                                            (indent (join `(,(if (or quote-keys (not (is-identifier (car p))))
-                                                                                 (quote-string (car p))
-                                                                                 (car p))
-                                                                             ,(walk (cdr p)))
-                                                                          " : " ":"))) props))
-                                                #.(format nil ",~%") ",")
-                                         ,(indent "}")) *codegen-newline*))))
+                            (if (not props) "{}"
+                                (join `("{"
+                                        ,(join (with-indent 1
+                                                 (mapcar (lambda (p)
+                                                           (indent (join `(,(if (or quote-keys (not (is-identifier (car p))))
+                                                                                (quote-string (car p))
+                                                                                (car p))
+                                                                            ,(walk (cdr p)))
+                                                                         " : " ":"))) props))
+                                               #.(format nil ",~%") ",")
+                                        ,(indent "}")) *codegen-newline*)))
 
                    (:binary (op left right)
                             (let ((lvalue (walk left))
@@ -241,10 +241,9 @@ characters in string S to STREAM."
                          (stick (parenthesize expr #'dot-call-parens) "." prop))
 
                    (:if (cond then else)
-                        (let ((a `("if" ,(stick "(" (walk cond) ")")
-                                        ,(if else (make-then then) (walk then))
-                                        ,@(if else `("else" ,(walk else))))))
-                          (apply #'add-spaces a)))
+                        (apply #'add-spaces `("if" ,(stick "(" (walk cond) ")")
+                                                   ,(if else (make-then then) (walk then))
+                                                   ,@(if else `("else" ,(walk else))))))
 
                    (:for (init cond step body)
                          (let ((args (join (list (if init (ppcre:regex-replace ";+$" (walk init) "") "")
