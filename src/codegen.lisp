@@ -221,9 +221,9 @@ characters in string S to STREAM."
                            (when args
                              (write-string (stick "(" (join (mapcar #'walk args) ", " ",") ")") out))))
 
-                   (:break (label) (add-spaces "break" label))
+                   (:break (label) (stick (add-spaces "break" label) ";"))
 
-                   (:continue (label) (add-spaces "continue" label))
+                   (:continue (label) (stick (add-spaces "continue" label) ";"))
 
                    (:conditional (cond then else)
                                  (add-spaces (parenthesize cond :assign :seq)
