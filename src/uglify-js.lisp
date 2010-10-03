@@ -31,12 +31,12 @@
                      (return)))))))
 
 (defun scope-has (scope name)
-  (loop :for s = scope :then (scope-parent s) :do
+  (loop :for s = scope :then (scope-parent s) :while s :do
      (when (gethash name (scope-names s))
        (return s))))
 
 (defun scope-has-mangled (scope mname)
-  (loop :for s = scope :then (scope-parent s) :do
+  (loop :for s = scope :then (scope-parent s) :while s :do
      (when (gethash mname (scope-rev-mangled s))
        (return s))))
 
@@ -61,70 +61,6 @@
        (when (is-identifier m)
          (go next))
        m)))
-
-(let ((reserved (list
-                 "abstract"
-                 "boolean"
-                 "break"
-                 "byte"
-                 "case"
-                 "catch"
-                 "char"
-                 "class"
-                 "const"
-                 "continue"
-                 "debugger"
-                 "default"
-                 "delete"
-                 "do"
-                 "double"
-                 "else"
-                 "enum"
-                 "export"
-                 "extends"
-                 "false"
-                 "final"
-                 "finally"
-                 "float"
-                 "for"
-                 "function"
-                 "goto"
-                 "if"
-                 "implements"
-                 "import"
-                 "in"
-                 "instanceof"
-                 "int"
-                 "interface"
-                 "long"
-                 "native"
-                 "new"
-                 "null"
-                 "package"
-                 "private"
-                 "protected"
-                 "public"
-                 "return"
-                 "short"
-                 "static"
-                 "super"
-                 "switch"
-                 "synchronized"
-                 "throw"
-                 "throws"
-                 "transient"
-                 "true"
-                 "try"
-                 "typeof"
-                 "undefined"
-                 "var"
-                 "void"
-                 "volatile"
-                 "while"
-                 "with")))
-  (defun is-identifier (name)
-    (and (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name)
-         (not (member name reserved :test #'string=)))))
 
 (defun scope-get-mangled (scope name &optional make)
   (block nil

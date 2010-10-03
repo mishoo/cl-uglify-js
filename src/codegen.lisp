@@ -3,7 +3,7 @@
 ;;; ast-to-code generator
 
 (defmacro stick (&rest elements)
-  `(apply #'concatenate 'string (remove-if #'null (list ,@elements))))
+  `(apply #'concatenate 'string (delete-if #'null (list ,@elements))))
 
 (defun repeat-string (str n)
   (declare (type (integer 0) n))
@@ -39,14 +39,6 @@ characters in string S to STREAM."
     (write-json-chars str out)
     (write-char #\" out)))
 
-(defmacro ast-case (expr &body body)
-  (let ((ex (gensym)))
-    `(let ((,ex ,expr))
-       (case (car ,ex)
-         ,@(loop :for (c a b) :in body
-              :if a :collect `(,c (destructuring-bind ,a (cdr ,ex) ,b))
-              :else :collect `(,c ,b))))))
-
 (defun ast-gen-code (ast &key
                      (beautify *codegen-beautify*)
                      (indent-level *codegen-indent-level*)
@@ -60,7 +52,7 @@ characters in string S to STREAM."
                     (decf indentation ,inc))))
       (labels ((indent (str)
                  (if beautify
-                     (stick (repeat-string " " (+ (* indentation indent-level) indent-start)) str)
+                     (stick (repeat-string " " (round (+ (* indentation indent-level) indent-start))) str)
                      str))
 
                (join (list sep1 &optional sep2)
@@ -79,8 +71,11 @@ characters in string S to STREAM."
                                                  :for line = (gencode this)
                                                  :when (and (not beautify)
                                                             (not next))
-                                                   :do (setq line (ppcre:regex-replace ";+$" line ""))
-                                                 :collect (indent line)))
+                                                 :do (setq line (ppcre:regex-replace ";+$" line ""))
+                                                 :if (member (car this) '(:case :default))
+                                                   :collect (with-indent -0.5 (indent line))
+                                                 :else
+                                                   :collect (indent line)))
                              ,(indent "}"))
                            nl)
                      "{}"))
@@ -160,7 +155,7 @@ characters in string S to STREAM."
                                                                                 (quote-string (car p))
                                                                                 (car p))
                                                                             ,(gencode (cdr p)))
-                                                                         " : " ":"))) props))
+                                                                         ": " ":"))) props))
                                                #.(format nil ",~%") ",")
                                         ,(indent "}")) *codegen-newline*)))
 
@@ -247,7 +242,7 @@ characters in string S to STREAM."
                    (:if (cond then else)
                         (apply #'add-spaces `("if" ,(stick "(" (gencode cond) ")")
                                                    ,(if else (make-then then) (gencode then))
-                                                   ,@(if else `("else" ,(gencode else))))))
+                                                   ,@(when else `("else" ,(gencode else))))))
 
                    (:for (init cond step body)
                          (let ((args (join (list (if init (ppcre:regex-replace ";+$" (gencode init) "") "")
