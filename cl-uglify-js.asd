@@ -6,5 +6,6 @@
   ((:module "src" :serial t
             :components ((:file "package")
                          (:file "constants")
+                         (:file "walker")
                          (:file "codegen")
                          (:file "uglify-js")))))
