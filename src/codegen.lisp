@@ -75,7 +75,12 @@ characters in string S to STREAM."
                (format-body (body &optional (nl *codegen-newline*))
                  (if body
                      (join `("{"
-                             ,@(with-indent 1 (mapcar #'indent (mapcar #'gencode body)))
+                             ,@(with-indent 1 (loop :for (this next) :on body
+                                                 :for line = (gencode this)
+                                                 :when (and (not beautify)
+                                                            (not next))
+                                                   :do (setq line (ppcre:regex-replace ";+$" line ""))
+                                                 :collect (indent line)))
                              ,(indent "}"))
                            nl)
                      "{}"))
