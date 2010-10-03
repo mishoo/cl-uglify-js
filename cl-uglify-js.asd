@@ -7,5 +7,6 @@
             :components ((:file "package")
                          (:file "constants")
                          (:file "walker")
+                         (:file "mangle")
                          (:file "uglify-js")
                          (:file "codegen")))))

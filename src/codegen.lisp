@@ -71,7 +71,7 @@ characters in string S to STREAM."
                                                  :for line = (gencode this)
                                                  :when (and (not beautify)
                                                             (not next))
-                                                 :do (setq line (ppcre:regex-replace ";+$" line ""))
+                                                   :do (setq line (ppcre:regex-replace ";+$" line ""))
                                                  :if (member (car this) '(:case :default))
                                                    :collect (with-indent -0.5 (indent line))
                                                  :else
@@ -112,6 +112,11 @@ characters in string S to STREAM."
                         ((:for :for-in) (setf b (fifth b)))
                         (t (return (gencode th)))))))
 
+               (make-name (name)
+                 (etypecase name
+                   (function (funcall name))
+                   (string name)))
+
                (gencode (ast)
                  ;; someone tell me how do I trick Emacs to indent this properly.
                  (ast-case ast
@@ -126,8 +131,8 @@ characters in string S to STREAM."
                              (:const "const "))
                            (join (mapcar (lambda (def)
                                            (if (cdr def)
-                                               (add-spaces (car def) "=" (gencode (cdr def)))
-                                               (car def))) defs)
+                                               (add-spaces (make-name (car def)) "=" (gencode (cdr def)))
+                                               (make-name (car def)))) defs)
                                  ", " ",")
                            ";"))
 
@@ -136,7 +141,9 @@ characters in string S to STREAM."
                    (:throw (expr) (stick (add-spaces "throw" (gencode expr)) ";"))
 
                    ((:function :defun) (name args body)
-                    (add-spaces (stick (add-spaces "function" name) "(" (join args ", " ",") ")")
+                    (add-spaces (stick (add-spaces "function" (when name
+                                                                (make-name name)))
+                                       "(" (join (mapcar #'make-name args) ", " ",") ")")
                                 (format-body body)))
 
                    (:stat (stmt)
@@ -188,7 +195,7 @@ characters in string S to STREAM."
 
                    (:string (str) (quote-string str))
 
-                   (:name (name) name)
+                   (:name (name) (make-name name))
 
                    (:atom (a) (string-downcase (string a)))
 
@@ -197,7 +204,7 @@ characters in string S to STREAM."
 
                    (:try (tr ca fi)
                          (add-spaces "try" (gencode tr)
-                                     (when ca (add-spaces "catch" (stick "(" (car ca) ")") (gencode (cdr ca))))
+                                     (when ca (add-spaces "catch" (stick "(" (make-name (car ca)) ")") (gencode (cdr ca))))
                                      (when fi (add-spaces "finally" (gencode fi)))))
 
                    (:assign (op left right)
@@ -221,9 +228,9 @@ characters in string S to STREAM."
                            (when args
                              (write-string (stick "(" (join (mapcar #'gencode args) ", " ",") ")") out))))
 
-                   (:break (label) (stick (add-spaces "break" label) ";"))
+                   (:break (label) (stick (add-spaces "break" (when label (make-name label))) ";"))
 
-                   (:continue (label) (stick (add-spaces "continue" label) ";"))
+                   (:continue (label) (stick (add-spaces "continue" (when label (make-name label))) ";"))
 
                    (:conditional (cond then else)
                                  (add-spaces (parenthesize cond :assign :seq)
@@ -257,7 +264,7 @@ characters in string S to STREAM."
                             (with-output-to-string (out)
                               (write-string (add-spaces "for" "(") out)
                               (when has-var (write-string "var " out))
-                              (write-string (add-spaces (stick key " in " (gencode hash) ")")
+                              (write-string (add-spaces (stick (make-name key) " in " (gencode hash) ")")
                                                         (gencode body)) out)))
 
                    (:while (cond body)
@@ -278,7 +285,7 @@ characters in string S to STREAM."
                          (join (list (gencode one) (gencode two)) ", " ","))
 
                    (:label (label body)
-                           (add-spaces (stick label ":") (gencode body)))
+                           (add-spaces (stick (when label (make-name label)) ":") (gencode body)))
 
                    (:case (expr) (stick (add-spaces "case" (gencode expr)) ":"))
 

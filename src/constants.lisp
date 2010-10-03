@@ -97,3 +97,7 @@
   (defun is-identifier (name)
     (and (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name)
          (not (member name reserved :test #'string=)))))
+
+(defun curry (func &rest a1)
+  (lambda (&rest a2)
+    (apply func (append a1 a2))))
