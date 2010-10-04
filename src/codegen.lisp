@@ -72,10 +72,21 @@ characters in string S to STREAM."
                                                  :when (and (not beautify)
                                                             (not next))
                                                    :do (setq line (ppcre:regex-replace ";+$" line ""))
-                                                 :if (member (car this) '(:case :default))
-                                                   :collect (with-indent -0.5 (indent line))
-                                                 :else
-                                                   :collect (indent line)))
+                                                 :collect (indent line)))
+                             ,(indent "}"))
+                           nl)
+                     "{}"))
+
+               (format-switch-body (body &optional (nl *codegen-newline*))
+                 (if body
+                     (join `("{"
+                             ,@(loop :for (c . b) :in body
+                                  :if c
+                                    :collect (with-indent 0.5 (indent (stick (add-spaces "case" (gencode c)) ":")))
+                                  :else
+                                    :collect (with-indent 0.5 (indent "default:"))
+                                  :end
+                                  :append (with-indent 1 (mapcar (lambda (expr) (indent (gencode expr))) b)))
                              ,(indent "}"))
                            nl)
                      "{}"))
@@ -158,7 +169,7 @@ characters in string S to STREAM."
                                 (join `("{"
                                         ,(join (with-indent 1
                                                  (mapcar (lambda (p)
-                                                           (indent (join `(,(if (or quote-keys 
+                                                           (indent (join `(,(if (or quote-keys
                                                                                     (and (stringp (car p))
                                                                                          (not (is-identifier (car p)))))
                                                                                 (quote-string (car p))
@@ -291,12 +302,8 @@ characters in string S to STREAM."
                    (:label (label body)
                            (add-spaces (stick (when label (make-name label)) ":") (gencode body)))
 
-                   (:case (expr) (stick (add-spaces "case" (gencode expr)) ":"))
-
-                   (:default () "default:")
-
                    (:switch (expr body)
                             (add-spaces "switch" (stick "(" (gencode expr) ")")
-                                        (format-body body))))))
+                                        (format-switch-body body))))))
 
         (gencode ast)))))
