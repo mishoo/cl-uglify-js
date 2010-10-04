@@ -11,13 +11,13 @@
               :if a :collect `(,c (destructuring-bind ,a (cdr ,ex) ,@b))
               :else :collect `(,c ,@b))))))
 
-(defmacro ast-walk ((expr &optional (walk 'walk)) &body body)
-  `(labels ((,walk (expr)
-              (when expr
+(defmacro ast-walk ((ast &optional (expr 'expr) (walk 'walk)) &body body)
+  `(labels ((,walk (,expr)
+              (when ,expr
                 (or (progn ,@body)
-                    (ast-case expr
-                      ((:function :defun) (name args body) `(,(car expr) ,name ,args ,(mapcar #',walk body)))
-                      ((:var :const) (defs) (list (car expr)
+                    (ast-case ,expr
+                      ((:function :defun) (name args body) `(,(car ,expr) ,name ,args ,(mapcar #',walk body)))
+                      ((:var :const) (defs) (list (car ,expr)
                                                   (mapcar (lambda (def)
                                                             `(,(car def) ,@(,walk (cdr def)))) defs)))
                       (:array (a) `(:array ,(mapcar #',walk a)))
@@ -58,4 +58,4 @@
                       (:unary-prefix (op expr) `(:unary-prefix ,op ,(,walk expr)))
                       (:while (cond body) `(:while ,(,walk cond) ,(,walk body)))
                       (:with (expr body) `(:while ,(,walk expr) ,(,walk body))))))))
-     (,walk ,expr)))
+     (,walk ,ast)))
