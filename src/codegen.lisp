@@ -158,9 +158,13 @@ characters in string S to STREAM."
                                 (join `("{"
                                         ,(join (with-indent 1
                                                  (mapcar (lambda (p)
-                                                           (indent (join `(,(if (or quote-keys (not (is-identifier (car p))))
+                                                           (indent (join `(,(if (or quote-keys 
+                                                                                    (and (stringp (car p))
+                                                                                         (not (is-identifier (car p)))))
                                                                                 (quote-string (car p))
-                                                                                (car p))
+                                                                                (if (integerp (car p))
+                                                                                    (write-to-string (car p))
+                                                                                    (car p)))
                                                                             ,(gencode (cdr p)))
                                                                          ": " ":"))) props))
                                                #.(format nil ",~%") ",")
@@ -184,7 +188,7 @@ characters in string S to STREAM."
                                     (setf op (operator-string op))
                                     (write-string op out)
                                     (when (char>= (char op 0) #\A)
-                                      (write-char #\Space))
+                                      (write-char #\Space out))
                                     (write-string (parenthesize expr :num #'dot-call-parens) out)))
 
                    (:unary-postfix (op expr)
