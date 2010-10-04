@@ -55,6 +55,11 @@ characters in string S to STREAM."
                      (stick (repeat-string " " (round (+ (* indentation indent-level) indent-start))) str)
                      str))
 
+               (discard-empty-blocks (body)
+                 (remove-if (lambda (stmt)
+                              (and (eq (car stmt) :block)
+                                   (not (cadr stmt)))) body))
+
                (join (list sep1 &optional sep2)
                  (with-output-to-string (out)
                    (loop :for cons :on list
@@ -65,6 +70,7 @@ characters in string S to STREAM."
                                                  (write-string sep2 out))))))
 
                (format-body (body &optional (nl *codegen-newline*))
+                 (setf body (discard-empty-blocks body))
                  (if body
                      (join `("{"
                              ,@(with-indent 1 (loop :for (this next) :on body
@@ -79,16 +85,18 @@ characters in string S to STREAM."
 
                (format-switch-body (body &optional (nl *codegen-newline*))
                  (if body
-                     (join `("{"
-                             ,@(loop :for (c . b) :in body
-                                  :if c
-                                    :collect (with-indent 0.5 (indent (stick (add-spaces "case" (gencode c)) ":")))
-                                  :else
-                                    :collect (with-indent 0.5 (indent "default:"))
-                                  :end
-                                  :append (with-indent 1 (mapcar (lambda (expr) (indent (gencode expr))) b)))
-                             ,(indent "}"))
-                           nl)
+                     (let ((body (join (loop :for (c . b) :in body
+                                          :if c :collect (with-indent 0.5
+                                                           (indent (stick (add-spaces "case" (gencode c)) ":")))
+                                          :else :collect (with-indent 0.5
+                                                           (indent "default:")) :end
+                                          :append (with-indent 1
+                                                    (mapcar (lambda (expr) (indent (gencode expr))) 
+                                                            (setf body (discard-empty-blocks b)))))
+                                       nl)))
+                       (unless beautify
+                         (setq body (ppcre:regex-replace ";+$" body "")))
+                       (join (list "{" body (indent "}")) nl))
                      "{}"))
 
                (add-spaces (&rest elements)
@@ -132,7 +140,10 @@ characters in string S to STREAM."
                  ;; someone tell me how do I trick Emacs to indent this properly.
                  (ast-case ast
 
-                   (:toplevel (body) (join (mapcar #'indent (mapcar #'gencode body)) *codegen-tl-newline*))
+                   (:toplevel (body) (join (mapcar #'indent 
+                                                   (mapcar #'gencode 
+                                                           (discard-empty-blocks body)))
+                                           *codegen-tl-newline*))
 
                    (:block (body) (format-body body))
 
