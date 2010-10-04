@@ -33,13 +33,15 @@
 
 (defun scope-has (scope name)
   (foreach-scope-parent (scope s)
-    (when (gethash name (scope-names s))
-      (return s))))
+    (multiple-value-bind (val has) (gethash name (scope-names s))
+      (declare (ignore val))
+      (when has (return s)))))
 
 (defun scope-has-mangled (scope mname)
   (foreach-scope-parent (scope s)
-    (when (gethash mname (scope-rev-mangled s))
-      (return s))))
+    (multiple-value-bind (val has) (gethash mname (scope-rev-mangled s))
+      (declare (ignore val))
+      (when has (return s)))))
 
 (defun scope-next-mangled (scope)
   (block nil
@@ -86,44 +88,43 @@
   (when name
     (setf (gethash name (scope-names scope)) name)))
 
+(defparameter *current-scope* nil)
+
 (defun ast-mangle (ast &key toplevel)
 
-  (let ((current-scope nil)
-        (having-eval ())
-        (mangles ()))
+  (let ((having-eval ()))
 
     (macrolet ((with-new-scope (&body body)
-                 `(prog2
-                      (setf current-scope (new-scope current-scope))
-                      (progn ,@body)
-                    (setf current-scope (scope-parent current-scope)))))
+                 `(let ((*current-scope* (new-scope *current-scope*)))
+                    ,@body)))
 
       (labels ((define (name)
-                 (scope-define current-scope name))
+                 (scope-define *current-scope* name))
 
                (reference (name)
-                 (setf (gethash name (scope-refs current-scope)) t))
+                 (setf (gethash name (scope-refs *current-scope*)) t))
 
                (wrap-name (name &key define reference)
-                 (when define (define name))
-                 (when reference (reference name))
-                 (if (or toplevel (scope-parent current-scope))
-                     (let ((ret (curry #'scope-get-mangled current-scope name define)))
-                       (setf mangles (pushnew ret mangles))
-                       ret)
+                 (if (is-identifier name)
+                     (progn
+                       (when define (define name))
+                       (when reference (reference name))
+                       (if (or toplevel (scope-parent *current-scope*))
+                           (curry #'scope-get-mangled *current-scope* name define)
+                           name))
                      name)))
 
         (with-new-scope
             (let ((new-ast (ast-walk (ast)
                              (ast-case expr
                                ((:function :defun) (name args body) `(,(car expr)
-                                                                       ,(wrap-name name :define t)
+                                                                       ,(when name (wrap-name name :define t))
                                                                        ,@(with-new-scope
                                                                           (list (mapcar (lambda (arg)
                                                                                           (wrap-name arg :define t)) args)
                                                                                 (mapcar #'walk body)))))
                                (:with ()
-                                      (foreach-scope-parent (current-scope s)
+                                      (foreach-scope-parent (*current-scope* s)
                                         (setf (scope-uses-with s) t))
                                       nil)
                                ((:var :const) (defs) `(,(car expr)
@@ -141,7 +142,7 @@
                                               ,(walk fi))))
                                (:name (name)
                                       (when (string= name "eval")
-                                        (setf having-eval (pushnew current-scope having-eval)))
+                                        (setf having-eval (pushnew *current-scope* having-eval)))
                                       `(:name ,(wrap-name name :reference t)))
                                (:for-in (has-var name hash body)
                                         `(:for-in ,has-var
@@ -167,18 +168,17 @@
                             :for origin = (scope-has scope name)
                             :do (foreach-scope-parent (scope s)
                                   (setf (gethash name (scope-refs s)) origin)
-                                  (when (eq s origin) (return))))
+                                  (when (eq s origin) (return)))))
 
-                         ;; ;; XXX: DUMP
-                         ;; (format t "SCOPE REFS ~A~%" (scope-level scope))
-                         ;; (loop :for k :being the hash-keys :in (scope-refs scope) :using (hash-value v)
-                         ;;    :do (format t "~A - ~A~%" k (scope-level v)))
+                       (mangle-names (scope)
+                         (when (or toplevel (scope-parent scope))
+                           (maphash (lambda (name v)
+                                      (declare (ignore v))
+                                      (scope-get-mangled scope name t))
+                                    (scope-names scope)))
+                         (mapc #'mangle-names (scope-children scope))))
 
-                         ))
-                (fixrefs current-scope))
-
-              ;; XXX: the result is more interesting if we don't reverse them ;-)
-              ;;      but right now I'm trying to generate exactly the same output as UglifyJS
-              (mapc #'funcall (reverse mangles))
+                (fixrefs *current-scope*)
+                (mangle-names *current-scope*))
 
               new-ast))))))
