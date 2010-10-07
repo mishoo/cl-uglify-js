@@ -126,7 +126,7 @@ characters in string S to STREAM."
                       (case type
                         (:if (when (not (fourth b))
                                ;; no else for this IF, we need the block
-                               (return (gencode `(:block (list ,th))))))
+                               (return (gencode `(:block (,th))))))
                         ((:while :do) (setf b (third b)))
                         ((:for :for-in) (setf b (fifth b)))
                         (t (return (gencode th)))))))
