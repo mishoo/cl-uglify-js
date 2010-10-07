@@ -18,7 +18,7 @@
              (if (> (length (ast-gen-code ast1 :beautify nil))
                     (length (ast-gen-code (if (eq (car ast2) :stat)
                                               (cadr ast2)
-                                              (car ast2)) :beautify nil)))
+                                              ast2) :beautify nil)))
                  ast2
                  ast1))
 
