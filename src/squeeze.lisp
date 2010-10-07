@@ -101,7 +101,7 @@
                (when (and (empty then) (empty else))
                  (return `(:stat ,cond))))
 
-             ;;
+             ;; small other optimizations possible
              (let ((ret `(:if ,cond ,then ,else)))
                (cond
                  ;; if blocks only contain one statement, we convert
@@ -122,9 +122,8 @@
                  ;; we're sure that the "then" block aborts (ends with
                  ;; throw or return), we can get rid of "else".
                  ((and else (aborts then))
-                  ;; XXX: isn't it better if we walk() this?
-                  (return `(:block ((:if ,cond ,then)
-                                    ,else))))
+                  (return (walk `(:block ((:if ,cond ,then)
+                                          ,else)))))
                  ;; otherwise, we already have the result in ret
                  (t ret))))
 
@@ -134,7 +133,7 @@
         (:conditional (cond then else)
                       (conditional (walk cond) (walk then) (walk else)))
 
-        ;; we need the following because try/catch/finally blocks are not really discardable
+        ;; the try/catch/finally blocks are not really discardable
         (:try (tr ca fi)
               `(:try (:block ,(tighten (mapcar #'walk (cadr tr))))
                      ,(when ca `(,(car ca) :block ,(tighten (mapcar #'walk (caddr ca)))))
