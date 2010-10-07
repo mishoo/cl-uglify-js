@@ -8,5 +8,6 @@
                          (:file "constants")
                          (:file "walker")
                          (:file "mangle")
+                         (:file "squeeze")
                          (:file "uglify-js")
                          (:file "codegen")))))

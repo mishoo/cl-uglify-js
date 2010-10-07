@@ -8,8 +8,8 @@
               :for c = (car i)
               :for a = (cadr i)
               :for b = (cddr i)
-              :if a :collect `(,c (destructuring-bind ,a (cdr ,ex) ,@b))
-              :else :collect `(,c ,@b))))))
+              :if a :collect `(,c (destructuring-bind (&optional ,@a) (cdr ,ex) (block nil ,@b)))
+              :else :collect `(,c (block nil ,@b)))))))
 
 (defmacro ast-walk ((ast &optional (expr 'expr) (walk 'walk)) &body body)
   `(labels ((,walk (,expr)
