@@ -1,7 +1,7 @@
 (asdf:defsystem #:cl-uglify-js
   :description "JavaScript compressor/beautifier on top of PARSE-JS"
   :author "Mihai Bazon <mihai.bazon@gmail.com>"
-  :depends-on (#:parse-js #:cl-ppcre)
+  :depends-on (#:parse-js #:cl-ppcre #:parse-number)
   :components
   ((:module "src" :serial t
             :components ((:file "package")

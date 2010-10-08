@@ -1,5 +1,23 @@
 (in-package #:uglify-js)
 
+(flet ((as-number (val)
+         (etypecase val
+           (string (parse-number:parse-number val))
+           (number val))))
+  (defgeneric binary-op (op left right)
+    (:method ((op (eql :+)) (left number) (right number))
+      (+ left right))
+    (:method ((op (eql :-)) (left number) (right number))
+      (- left right))
+    (:method ((op (eql :*)) (left number) (right number))
+      (* left right))
+    (:method ((op (eql :/)) (left number) (right number))
+      (/ left right))
+    (:method ((op (eql :+)) left right)
+      (format nil "~A~A" left right))
+    (:method (op left right)
+      (binary-op op (as-number left) (as-number right)))))
+
 (defun ast-squeeze (ast &key (no-seqs t))
   (labels ((is-constant (node)
              (case (car node)
@@ -139,8 +157,22 @@
                      ,(when ca `(,(car ca) :block ,(tighten (mapcar #'walk (caddr ca)))))
                      ,(when fi `(:block ,(tighten (mapcar #'walk (cadr fi)))))))
 
-        (:switch () (warn "TODO: switch -- walk the tree"))
+        (:switch (expr body)
+                 `(:switch ,(walk expr)
+                           ,(mapcar (lambda (branch)
+                                      `(,(walk (car branch))
+                                         ,@(tighten (mapcar #'walk (cdr branch))))
+                                      ) body)))
 
-        (:binary () (warn "TODO: binary -- resolve simple expressions"))))
+        (:binary (op left right)
+                 (setf left (walk left)
+                       right (walk right))
+                 (let ((ret `(:binary ,op ,left ,right)))
+                   (when (and (is-constant left)
+                              (is-constant right))
+                     (let ((val (binary-op op (cadr left) (cadr right))))
+                       (when val
+                         (setf ret (best-of ret `(,(etypecase val (string :string) (number :num)) ,val))))))
+                   ret))))
 
     ))
