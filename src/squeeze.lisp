@@ -62,19 +62,36 @@
                      `(:binary :&& ,cond ,then))))
 
            (tighten (statements)
-             (let (ret)
-               (setf ret (loop :for i :in statements
-                            :if (eq (car i) :block) :nconc (cadr i)
-                            :else :collect i))
-               (setf ret (loop :for this :in ret
-                            :with prev = nil
-                            :if (and prev (or (and (eq (car this) :var) (eq (car prev) :var))
-                                              (and (eq (car this) :const) (eq (car prev) :const))))
-                            :do (nconc (cadr prev) (cadr this))
-                            :else :collect this :do (setq prev this)))
-               (when no-seqs
-                 (return-from tighten ret))
-               (error "Implement seqs"))))
+             (setf statements (loop :for i :in statements
+                                 :if (eq (car i) :block) :nconc (cadr i)
+                                 :else :collect i))
+             (setf statements (loop :for this :in statements
+                                 :with prev = nil
+
+                                 ;; XXX: the following should safely remove some unreachable code (but maybe we should warn instead?)
+                                 ;; :when (member (car this) '(:return :throw :continue :break)) 
+                                 ;;   :collect this :into ret :and :do (return ret)
+
+                                 :if (and prev (or (and (eq (car this) :var) (eq (car prev) :var))
+                                                   (and (eq (car this) :const) (eq (car prev) :const))))
+                                   :do (nconc (cadr prev) (cadr this))
+                                 :else
+                                   :collect this :into ret :and :do (setf prev this)
+                                 :finally (return ret)))
+             (when no-seqs
+               (return-from tighten statements))
+             (setf statements (loop :for this :in statements
+                                 :with prev = nil
+                                 :if (not prev)
+                                   :collect this
+                                   :and :do (when (eq (car this) :stat)
+                                              (setf prev this))
+                                 :else :if (and (eq (car prev) :stat)
+                                                (eq (car this) :stat))
+                                     :do (setf (cadr prev) `(:seq ,(cadr prev)
+                                                                  ,(cadr this)))
+                                 :else :collect this :and :do (setf prev nil)))
+             statements))
 
     (ast-walk (ast expr walk)
       (ast-case expr
