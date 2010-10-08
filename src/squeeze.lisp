@@ -18,7 +18,9 @@
     (:method (op left right)
       (binary-op op (as-number left) (as-number right)))))
 
-(defun ast-squeeze (ast &key (no-seqs t))
+(defun ast-squeeze (ast &key
+                    (no-seqs nil)
+                    (no-dead-code t))
   (labels ((is-constant (node)
              (case (car node)
                ((:string :num) t)
@@ -67,11 +69,8 @@
                                  :else :collect i))
              (setf statements (loop :for this :in statements
                                  :with prev = nil
-
-                                 ;; XXX: the following should safely remove some unreachable code (but maybe we should warn instead?)
-                                 ;; :when (member (car this) '(:return :throw :continue :break)) 
-                                 ;;   :collect this :into ret :and :do (return ret)
-
+                                 :when (and no-dead-code (member (car this) '(:return :throw :continue :break)))
+                                   :collect this :into ret :and :do (return ret)
                                  :if (and prev (or (and (eq (car this) :var) (eq (car prev) :var))
                                                    (and (eq (car this) :const) (eq (car prev) :const))))
                                    :do (nconc (cadr prev) (cadr this))

@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+               "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+lang="en" xml:lang="en">
+<head>
+<title>cl-uglify-js -- JavaScript compressor/beautifier for Common Lisp</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta name="generator" content="Org-mode"/>
+<meta name="generated" content="2010-10-08 23:04:43 CEST"/>
+<meta name="author" content="Mihai Bazon"/>
+<meta name="description" content="JavaScript compressor/beautifier for Common Lisp"/>
+<meta name="keywords" content="javascript, js, parser, compiler, compressor, mangle, minify, minifier, common lisp"/>
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  html { font-family: Times, serif; font-size: 12pt; }
+  .title  { text-align: center; }
+  .todo   { color: red; }
+  .done   { color: green; }
+  .tag    { background-color: #add8e6; font-weight:normal }
+  .target { }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  p.verse { margin-left: 3% }
+  pre {
+	border: 1pt solid #AEBDCC;
+	background-color: #F3F5F7;
+	padding: 5pt;
+	font-family: courier, monospace;
+        font-size: 90%;
+        overflow:auto;
+  }
+  table { border-collapse: collapse; }
+  td, th { vertical-align: top; }
+  dt { font-weight: bold; }
+  div.figure { padding: 0.5em; }
+  div.figure p { text-align: center; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size:smaller }
+  .code-highlighted {background-color:#ffff00;}
+  .org-info-js_info-navigation { border-style:none; }
+  #org-info-js_console-label { font-size:10px; font-weight:bold;
+                               white-space:nowrap; }
+  .org-info-js_search-highlight {background-color:#ffff00; color:#000000;
+                                 font-weight:bold; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="docstyle.css" />
+<script type="text/javascript">
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+
+<h1 class="title">cl-uglify-js &ndash; JavaScript compressor/beautifier for Common Lisp</h1>
+
+<p><b>Warning</b>: this code is yet to be properly tested. ;-) I'll remove this line
+when I have enough confidence.
+</p>
+<p>
+This is a Common Lisp version of <a href="http://github.com/mishoo/UglifyJS">UglifyJS</a>.  It works on data produced by
+<a href="http://marijn.haverbeke.nl/parse-js/">parse-js</a> to generate a “minified” version of the JavaScript code.  Currently
+it can:
+</p>
+<ul>
+<li>
+reduce variable names (usually to single letters)
+</li>
+<li>
+join consecutive <b>var</b> statements
+</li>
+<li>
+resolve simple binary expressions
+</li>
+<li>
+group most consecutive statements using the “sequence” operator (comma)
+</li>
+<li>
+remove unnecessary blocks
+</li>
+<li>
+convert IF expressions in various ways that result in smaller code
+</li>
+<li>
+remove some unreachable code
+
+</li>
+</ul>
+
+<p>It's faster than both YUI Compressor and Google Closure, and almost as good
+as (and a bit safer than) Google Closure in terms of compressed code size.
+</p>
+<p>
+See the <a href="http://github.com/mishoo/UglifyJS">UglifyJS</a> page for more information.
+</p>
+
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">1 Dependencies </a></li>
+<li><a href="#sec-2">2 API </a>
+<ul>
+<li><a href="#sec-2_1">2.1 ast-squeeze (ast &amp;key no-seqs no-dead-code) </a></li>
+<li><a href="#sec-2_2">2.2 ast-mangle (ast &amp;key toplevel) </a></li>
+<li><a href="#sec-2_3">2.3 ast-gen-code (ast &amp;key (beautify T) (indent-level 4) (indent-start 0) quote-keys) </a></li>
+</ul>
+</li>
+<li><a href="#sec-3">3 Compress one file </a></li>
+<li><a href="#sec-4">4 License </a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-1" class="outline-3">
+<h3 id="sec-1"><span class="section-number-3">1</span> Dependencies </h3>
+<div class="outline-text-3" id="text-1">
+
+
+<ul>
+<li>
+<a href="http://marijn.haverbeke.nl/parse-js/">parse-js</a>
+</li>
+<li>
+<a href="http://weitz.de/cl-ppcre/">cl-ppcre</a>
+</li>
+<li>
+<a href="http://www.cliki.net/PARSE-NUMBER">parse-number</a>
+
+</li>
+</ul>
+
+<p>I only tested it on SBCL.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-2" class="outline-3">
+<h3 id="sec-2"><span class="section-number-3">2</span> API </h3>
+<div class="outline-text-3" id="text-2">
+
+
+<p>
+The following functions are exported:
+</p>
+
+</div>
+
+<div id="outline-container-2_1" class="outline-4">
+<h4 id="sec-2_1"><span class="section-number-4">2.1</span> ast-squeeze (ast &amp;key no-seqs no-dead-code) </h4>
+<div class="outline-text-4" id="text-2_1">
+
+
+<p>
+Applies various compression techniques.  It expects an AST (as returned by
+<a href="http://marijn.haverbeke.nl/parse-js/">parse-js</a>) and returns a new, compatible AST (possibly sharing structure with
+the original one!).
+</p>
+<p>
+Optional keyword arguments:
+</p>
+<ul>
+<li>
+<code>no-seqs</code> (default <code>NIL</code>) &mdash; if this is true, it will not group consecutive
+statements with the comma operator.
+</li>
+<li>
+<code>no-dead-code</code> (default <code>NIL</code>) &mdash; if you pass true it will not attempt to
+remove unreachable code.
+
+</li>
+</ul>
+</div>
+
+</div>
+
+<div id="outline-container-2_2" class="outline-4">
+<h4 id="sec-2_2"><span class="section-number-4">2.2</span> ast-mangle (ast &amp;key toplevel) </h4>
+<div class="outline-text-4" id="text-2_2">
+
+
+<p>
+“Mangles” variable names (renames all variables to shorter version).  This
+function is careful not to affect the semantics of the code.  It will avoid
+renaming undeclared variables (which could possibly be defined in some other
+script), and avoid renaming names that are under the influence of a <b>with</b>
+block, or within the context of an <b>eval</b> call.
+</p>
+<p>
+Optional keyword arguments:
+</p>
+<ul>
+<li>
+<code>toplevel</code> (default <code>NIL</code>) &mdash; pass <b>true</b> here if you want to mangle the
+toplevel scope.  By default we don't.
+
+</li>
+</ul>
+
+<p>Note that this function returns a somewhat incompatible AST.  Literal names
+(which are normally strings) are replaced with lambda-s that would return
+the mangled version.  <code>ast-gen-code</code> knows how to deal with this.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-2_3" class="outline-4">
+<h4 id="sec-2_3"><span class="section-number-4">2.3</span> ast-gen-code (ast &amp;key (beautify T) (indent-level 4) (indent-start 0) quote-keys) </h4>
+<div class="outline-text-4" id="text-2_3">
+
+
+<p>
+Given an abstract syntax tree, this function returns the corresponding
+JavaScript code (as a string).
+</p>
+<p>
+Optional keyword arguments:
+</p>
+<ul>
+<li>
+<code>beautify</code> (default <b>true</b>).  By default ast-gen-code returns nicely
+indented code.  If you want to compress, pass <code>:beautify NIL</code>.
+
+</li>
+</ul>
+
+<p>The other arguments only make sense if <code>beautify</code> is <b>true</b>:
+</p>
+<ul>
+<li>
+<code>indent-level</code>: number of spaces to use for indentation.  Note that
+case/default statements are indented to half of this number, so better
+pass an even one.
+
+</li>
+<li>
+<code>indent-start</code>: the whole code will be indented by this number of spaces
+(default 0).
+
+</li>
+<li>
+<code>quote-keys</code>: by default, we only quote keys that cannot be used otherwise
+(i.e. reserved words such as "while").  Pass this <b>true</b> to quote all keys
+regardless.
+
+</li>
+</ul>
+</div>
+</div>
+
+</div>
+
+<div id="outline-container-3" class="outline-3">
+<h3 id="sec-3"><span class="section-number-3">3</span> Compress one file </h3>
+<div class="outline-text-3" id="text-3">
+
+
+<p>
+To compress one file, you would do something like this:
+</p>
+
+
+
+<pre class="src src-lisp">(ast-gen-code
+  (ast-mangle
+    (ast-squeeze
+      (<span style="color: #afeeee; font-weight: bold;">with-input-from-file</span> (in <span style="color: #87cefa;">"/path/to/file.js"</span>)
+        (parse-js:parse-js in)))) <span style="color: #7fffd4;">:beautify</span> nil)
+</pre>
+
+
+
+<p>
+Some simplified API will be available at some point, though I'm not sure it
+would be really useful.
+</p>
+</div>
+
+</div>
+
+<div id="outline-container-4" class="outline-3">
+<h3 id="sec-4"><span class="section-number-3">4</span> License </h3>
+<div class="outline-text-3" id="text-4">
+
+
+
+
+
+<pre class="example">Copyright 2010 (c) Mihai Bazon &lt;mihai.bazon@gmail.com&gt;
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any
+damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any
+purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must
+   not claim that you wrote the original software. If you use this
+   software in a product, an acknowledgment in the product
+   documentation would be appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must
+   not be misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source
+   distribution.
+</pre>
+
+
+</div>
+</div>
+<div id="postamble">
+<p class="author"> Author: Mihai Bazon
+</p>
+<p class="date"> Date: 2010-10-08 23:04:43 CEST</p>
+<p class="creator">HTML generated by org-mode 6.36trans in emacs 23</p>
+</div>
+</div>
+</body>
+</html>

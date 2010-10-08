@@ -1,0 +1,131 @@
+#+TITLE: cl-uglify-js -- JavaScript compressor/beautifier for Common Lisp
+#+KEYWORDS: javascript, js, parser, compiler, compressor, mangle, minify, minifier, common lisp
+#+DESCRIPTION: JavaScript compressor/beautifier for Common Lisp
+#+STYLE: <link rel="stylesheet" type="text/css" href="docstyle.css" />
+#+AUTHOR: Mihai Bazon
+#+EMAIL: mihai.bazon@gmail.com
+
+*Warning*: this code is yet to be properly tested. ;-) I'll remove this line
+when I have enough confidence.
+
+This is a Common Lisp version of [[http://github.com/mishoo/UglifyJS][UglifyJS]].  It works on data produced by
+[[http://marijn.haverbeke.nl/parse-js/][parse-js]] to generate a “minified” version of the JavaScript code.  Currently
+it can:
+
+- reduce variable names (usually to single letters)
+- join consecutive *var* statements
+- resolve simple binary expressions
+- group most consecutive statements using the “sequence” operator (comma)
+- remove unnecessary blocks
+- convert IF expressions in various ways that result in smaller code
+- remove some unreachable code
+
+It's faster than both YUI Compressor and Google Closure, and almost as good
+as (and a bit safer than) Google Closure in terms of compressed code size.
+
+See the [[http://github.com/mishoo/UglifyJS][UglifyJS]] page for more information.
+
+** Dependencies
+
+- [[http://marijn.haverbeke.nl/parse-js/][parse-js]]
+- [[http://weitz.de/cl-ppcre/][cl-ppcre]]
+- [[http://www.cliki.net/PARSE-NUMBER][parse-number]]
+
+I only tested it on SBCL.
+
+** API
+
+The following functions are exported:
+
+*** ast-squeeze (ast &key no-seqs no-dead-code)
+
+Applies various compression techniques.  It expects an AST (as returned by
+[[http://marijn.haverbeke.nl/parse-js/][parse-js]]) and returns a new, compatible AST (possibly sharing structure with
+the original one!).
+
+Optional keyword arguments:
+
+- =no-seqs= (default =NIL=) --- if this is true, it will not group consecutive
+  statements with the comma operator.
+- =no-dead-code= (default =NIL=) --- if you pass true it will not attempt to
+  remove unreachable code.
+
+*** ast-mangle (ast &key toplevel)
+
+“Mangles” variable names (renames all variables to shorter version).  This
+function is careful not to affect the semantics of the code.  It will avoid
+renaming undeclared variables (which could possibly be defined in some other
+script), and avoid renaming names that are under the influence of a *with*
+block, or within the context of an *eval* call.
+
+Optional keyword arguments:
+
+- =toplevel= (default =NIL=) --- pass *true* here if you want to mangle the
+  toplevel scope.  By default we don't.
+
+Note that this function returns a somewhat incompatible AST.  Literal names
+(which are normally strings) are replaced with lambda-s that would return
+the mangled version.  =ast-gen-code= knows how to deal with this.
+
+*** ast-gen-code (ast &key (beautify T) (indent-level 4) (indent-start 0) quote-keys)
+
+Given an abstract syntax tree, this function returns the corresponding
+JavaScript code (as a string).
+
+Optional keyword arguments:
+
+- =beautify= (default *true*).  By default ast-gen-code returns nicely
+  indented code.  If you want to compress, pass =:beautify NIL=.
+
+The other arguments only make sense if =beautify= is *true*:
+
+- =indent-level=: number of spaces to use for indentation.  Note that
+  case/default statements are indented to half of this number, so better
+  pass an even one.
+
+- =indent-start=: the whole code will be indented by this number of spaces
+  (default 0).
+
+- =quote-keys=: by default, we only quote keys that cannot be used otherwise
+  (i.e. reserved words such as "while").  Pass this *true* to quote all keys
+  regardless.
+
+** Compress one file
+
+To compress one file, you would do something like this:
+
+#+BEGIN_SRC lisp
+(ast-gen-code
+  (ast-mangle
+    (ast-squeeze
+      (with-input-from-file (in "/path/to/file.js")
+        (parse-js:parse-js in)))) :beautify nil)
+#+END_SRC
+
+Some simplified API will be available at some point, though I'm not sure it
+would be really useful.
+
+** License
+
+#+BEGIN_EXAMPLE
+Copyright 2010 (c) Mihai Bazon <mihai.bazon@gmail.com>
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any
+damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any
+purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must
+   not claim that you wrote the original software. If you use this
+   software in a product, an acknowledgment in the product
+   documentation would be appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must
+   not be misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source
+   distribution.
+#+END_EXAMPLE
