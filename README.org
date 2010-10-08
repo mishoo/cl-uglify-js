@@ -98,7 +98,7 @@ To compress one file, you would do something like this:
 (ast-gen-code
   (ast-mangle
     (ast-squeeze
-      (with-input-from-file (in "/path/to/file.js")
+      (with-open-file (in "/path/to/file.js")
         (parse-js:parse-js in)))) :beautify nil)
 #+END_SRC
 
