@@ -173,9 +173,9 @@
                  ;; throw or return), we can get rid of "else".
                  ((and else (aborts then))
                   (return (walk `(:block ((:if ,cond ,then)
-                                          ,else)))))
-                 ;; otherwise, we already have the result in ret
-                 (t ret))))
+                                          ,else))))))
+               ;; otherwise, we already have the result in ret
+               ret))
 
         ((:function :defun) (name args body)
          `(,(car expr) ,name ,args ,(tighten (mapcar #'walk body))))
