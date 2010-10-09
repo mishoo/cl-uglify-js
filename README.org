@@ -5,9 +5,6 @@
 #+AUTHOR: Mihai Bazon
 #+EMAIL: mihai.bazon@gmail.com
 
-*Warning*: this code is yet to be properly tested. ;-) I'll remove this line
-when I have enough confidence.
-
 This is a Common Lisp version of [[http://github.com/mishoo/UglifyJS][UglifyJS]].  It works on data produced by
 [[http://marijn.haverbeke.nl/parse-js/][parse-js]] to generate a “minified” version of the code.  Currently
 it can:
@@ -20,8 +17,9 @@ it can:
 - convert IF expressions in various ways that result in smaller code
 - remove some unreachable code
 
-It's faster than both YUI Compressor and Google Closure, and almost as good
-as (and a bit safer than) Google Closure in terms of compressed code size.
+It's faster than YUI Compressor, Google Closure /and/ UglifyJS, and almost
+as good as (and a bit safer than) Google Closure in terms of compressed code
+size.
 
 See the [[http://github.com/mishoo/UglifyJS][UglifyJS]] page for more information.
 

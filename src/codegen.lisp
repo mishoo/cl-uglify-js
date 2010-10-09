@@ -231,7 +231,7 @@ characters in string S to STREAM."
 
                    (:num (n) (cond
                                ((= (floor n) n) (ppcre:regex-replace "000+$"
-                                                                     (format nil "~D" n)
+                                                                     (format nil "~D" (floor n))
                                                                      (lambda(str s e ms me rs re)
                                                                        (declare (ignore str s e rs re))
                                                                        (format nil "e~A" (- me ms)))))
