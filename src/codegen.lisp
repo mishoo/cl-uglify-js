@@ -33,6 +33,13 @@ characters in string S to STREAM."
               (format stream "\\~C~V,V,'0R" esc radix width code)))))
 ;;; </cl-json>
 
+(defun write-regexp (s stream)
+  (loop :for ch :across s
+     :for code = (char-code ch)
+     :if (< #x1f code #x7f) :do (write-char ch stream)
+     :else :if (< code #x100) :do (format stream "\\x~16,2,'0R" code)
+     :else :do (format stream "\\u~16,4,'0R" code)))
+
 (defun quote-string (str)
   (with-output-to-string (out)
     (write-char #\" out)
@@ -91,7 +98,7 @@ characters in string S to STREAM."
                                           :else :collect (with-indent 0.5
                                                            (indent "default:")) :end
                                           :append (with-indent 1
-                                                    (mapcar (lambda (expr) (indent (gencode expr))) 
+                                                    (mapcar (lambda (expr) (indent (gencode expr)))
                                                             (setf body (discard-empty-blocks b)))))
                                        nl)))
                        (unless beautify
@@ -141,8 +148,8 @@ characters in string S to STREAM."
                  ;; someone tell me how do I trick Emacs to indent this properly.
                  (ast-case ast
 
-                   (:toplevel (body) (join (mapcar #'indent 
-                                                   (mapcar #'gencode 
+                   (:toplevel (body) (join (mapcar #'indent
+                                                   (mapcar #'gencode
                                                            (discard-empty-blocks body)))
                                            *codegen-tl-newline*))
 
@@ -222,7 +229,15 @@ characters in string S to STREAM."
                                               (parenthesize expr #'dot-call-parens))
                                           (operator-string op)))
 
-                   (:num (n) (format nil "~A" n))
+                   (:num (n) (cond
+                               ((= (floor n) n) (ppcre:regex-replace "000+$"
+                                                                     (format nil "~D" n)
+                                                                     (lambda(str s e ms me rs re)
+                                                                       (declare (ignore str s e rs re))
+                                                                       (format nil "e~A" (- me ms)))))
+                               (t (ppcre:regex-replace "^0\." 
+                                                       (ppcre:regex-replace "\\.e" (with-output-to-string (out) (prin1 n out)) "e")
+                                                       "."))))
 
                    (:string (str) (quote-string str))
 
@@ -231,7 +246,8 @@ characters in string S to STREAM."
                    (:atom (a) (string-downcase (string a)))
 
                    (:regexp (pattern modifiers)
-                            (stick "/" pattern "/" modifiers))
+                            (stick "/" (with-output-to-string (out)
+                                         (write-regexp pattern out)) "/" modifiers))
 
                    (:try (tr ca fi)
                          (add-spaces "try" (gencode tr)
