@@ -19,8 +19,8 @@
       (binary-op op (as-number left) (as-number right)))))
 
 (defun ast-squeeze (ast &key
-                    (no-seqs nil)
-                    (no-dead-code t))
+                    (sequences t)
+                    (dead-code t))
   (labels ((is-constant (node)
              (case (car node)
                ((:string :num) t)
@@ -81,7 +81,7 @@
 
              ;; after return. throw, break or continue, only function
              ;; and var declarations might make sense -- drop others.
-             (when no-dead-code
+             (when dead-code
                (let ((has-ended nil))
                  (setf statements (remove-if (lambda (stat)
                                                (let ((dead (and has-ended (not (member (car stat) '(:function :defun :var :const))))))
@@ -93,7 +93,7 @@
                                              statements))))
 
              ;; join consecutive statements into a :seq
-             (unless no-seqs
+             (when sequences
                (setf statements (loop :for this :in statements
                                    :with prev = nil
                                    :if (not prev)

@@ -37,7 +37,7 @@ I only tested it on SBCL.
 
 The following functions are exported:
 
-*** ast-squeeze (ast &key no-seqs no-dead-code)
+*** ast-squeeze (ast &key (sequences T) (dead-code T))
 
 Applies various compression techniques.  It expects an AST (as returned by
 [[http://marijn.haverbeke.nl/parse-js/][parse-js]]) and returns a new, compatible AST (possibly sharing structure with
@@ -45,10 +45,14 @@ the original one!).
 
 Optional keyword arguments:
 
-- =no-seqs= (default =NIL=) --- if this is true, it will not group consecutive
-  statements with the comma operator.
-- =no-dead-code= (default =NIL=) --- if you pass true it will not attempt to
+- =sequences= (default =T=) --- set this to =NIL= to disable grouping
+  consecutive statements into a sequence using the “comma operator”.
+- =dead-code= (default =T=) --- if you pass =NIL= it will not attempt to
   remove unreachable code.
+
+When it encounters unreachable code and =dead-code= is *true*, this function
+will =warn= about it.  The warnings go to =*error-output*=, so rebind that
+if you want to catch the messages.
 
 *** ast-mangle (ast &key toplevel)
 
