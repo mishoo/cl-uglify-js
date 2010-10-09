@@ -9,7 +9,7 @@
 when I have enough confidence.
 
 This is a Common Lisp version of [[http://github.com/mishoo/UglifyJS][UglifyJS]].  It works on data produced by
-[[http://marijn.haverbeke.nl/parse-js/][parse-js]] to generate a “minified” version of the JavaScript code.  Currently
+[[http://marijn.haverbeke.nl/parse-js/][parse-js]] to generate a “minified” version of the code.  Currently
 it can:
 
 - reduce variable names (usually to single letters)
