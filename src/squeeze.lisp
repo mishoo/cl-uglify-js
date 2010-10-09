@@ -191,10 +191,15 @@
 
         (:switch (expr body)
                  `(:switch ,(walk expr)
-                           ,(mapcar (lambda (branch)
-                                      `(,(walk (car branch))
-                                         ,@(tighten (mapcar #'walk (cdr branch))))
-                                      ) body)))
+                           ,(loop :for (branch next) :on body
+                               :for case = (walk (car branch))
+                               :for body = (tighten (mapcar #'walk (cdr branch)))
+                               :for last = (and (not next) (last body))
+                               :when (and last
+                                          (eq (caar last) :break)
+                                          (not (cadar last)))
+                                 :do (setq body (butlast body))
+                               :collect `(,case ,@body))))
 
         (:binary (op left right)
                  (setf left (walk left)
