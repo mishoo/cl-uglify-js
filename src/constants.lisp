@@ -28,11 +28,8 @@
 
 (defun precedence (op) (gethash op *precedence*))
 
-(defun dot-call-no-parens (expr)
-  (member (car expr) *codegen-dot-call-no-parens*))
-
 (defun dot-call-parens (expr)
-  (not (dot-call-no-parens expr)))
+  (not (member (car expr) *codegen-dot-call-no-parens*)))
 
 (let ((reserved (list
                  "abstract"

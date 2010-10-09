@@ -212,10 +212,14 @@ characters in string S to STREAM."
                                     (write-string op out)
                                     (when (char>= (char op 0) #\A)
                                       (write-char #\Space out))
-                                    (write-string (parenthesize expr :num #'dot-call-parens) out)))
+                                    (if (eq (car expr) :num)
+                                        (write-string (gencode expr) out)
+                                        (write-string (parenthesize expr #'dot-call-parens) out))))
 
                    (:unary-postfix (op expr)
-                                   (stick (parenthesize expr :num #'dot-call-parens)
+                                   (stick (if (eq (car expr) :num)
+                                              (gencode expr)
+                                              (parenthesize expr #'dot-call-parens))
                                           (operator-string op)))
 
                    (:num (n) (format nil "~A" n))
