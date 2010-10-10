@@ -5,17 +5,6 @@
 (defmacro stick (&rest elements)
   `(apply #'concatenate 'string (delete-if #'null (list ,@elements))))
 
-(defun repeat-string (str n)
-  (declare (type (integer 0) n))
-  (cond
-    ((= n 0) "")
-    ((= n 1) str)
-    (t (let ((dbl (repeat-string str (ash n -1))))
-         (setq dbl (concatenate 'string dbl dbl))
-         (if (oddp n)
-             (concatenate 'string dbl str)
-             dbl)))))
-
 ;;; <cl-json> --- the following is taken from cl-json
 (defun write-json-chars (s stream)
   "Write JSON representations (chars or escape sequences) of
@@ -59,7 +48,7 @@ characters in string S to STREAM."
                     (decf indentation ,inc))))
       (labels ((indent (str)
                  (if beautify
-                     (stick (repeat-string " " (round (+ (* indentation indent-level) indent-start))) str)
+                     (stick (make-string (round (+ (* indentation indent-level) indent-start)) :initial-element #\Space) str)
                      str))
 
                (discard-empty-blocks (body)
