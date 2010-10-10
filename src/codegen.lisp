@@ -40,6 +40,7 @@ characters in string S to STREAM."
                      (indent-level *codegen-indent-level*)
                      (indent-start *codegen-indent-start*)
                      (quote-keys *codegen-quote-keys*))
+  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((indentation 0))
     (macrolet ((with-indent (inc &body body)
                  `(prog2
@@ -224,8 +225,8 @@ characters in string S to STREAM."
                                                                      (lambda(str s e ms me rs re)
                                                                        (declare (ignore str s e rs re))
                                                                        (format nil "e~A" (- me ms)))))
-                               (t (ppcre:regex-replace "^0\." 
-                                                       (ppcre:regex-replace "\\.e" (with-output-to-string (out) (prin1 n out)) "e")
+                               (t (ppcre:regex-replace "^0\."
+                                                       (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
                                                        "."))))
 
                    (:string (str) (quote-string str))
