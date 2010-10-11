@@ -2,8 +2,9 @@
 
 ;;; ast-to-code generator
 
-(defmacro stick (&rest elements)
-  `(apply #'concatenate 'string (delete-if #'null (list ,@elements))))
+(defun stick (&rest elements)
+  (declare (inline stick))
+  (apply #'concatenate 'string (delete-if #'null elements)))
 
 ;;; <cl-json> --- the following is taken from cl-json
 (defun write-json-chars (s stream)
@@ -23,6 +24,7 @@ characters in string S to STREAM."
 ;;; </cl-json>
 
 (defun write-regexp (s stream)
+  (declare (inline write-regexp))
   (loop :for ch :across s
      :for code = (char-code ch)
      :if (< #x1f code #x7f) :do (write-char ch stream)
@@ -30,6 +32,7 @@ characters in string S to STREAM."
      :else :do (format stream "\\u~16,4,'0R" code)))
 
 (defun quote-string (str)
+  (declare (inline quote-string))
   (with-output-to-string (out)
     (write-char #\" out)
     (write-json-chars str out)
@@ -40,7 +43,6 @@ characters in string S to STREAM."
                      (indent-level *codegen-indent-level*)
                      (indent-start *codegen-indent-start*)
                      (quote-keys *codegen-quote-keys*))
-  ;; (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((indentation 0))
     (macrolet ((with-indent (inc &body body)
                  `(prog2
@@ -52,8 +54,13 @@ characters in string S to STREAM."
                      (stick (make-string (round (+ (* indentation indent-level) indent-start)) :initial-element #\Space) str)
                      str))
 
+               (precedence (op)
+                 (declare (ftype (function (keyword) (integer 0 100))))
+                 (gethash op *precedence*))
+
                (discard-empty-blocks (body)
-                 (remove-if (lambda (stmt)
+                 (declare (type list body))
+                 (delete-if (lambda (stmt)
                               (and (eq (car stmt) :block)
                                    (not (cadr stmt)))) body))
 
@@ -97,6 +104,7 @@ characters in string S to STREAM."
                      "{}"))
 
                (add-spaces (&rest elements)
+                 (declare (type list elements))
                  (setf elements (delete-if #'null elements))
                  (cond
                    (beautify (format nil "~{~A~^ ~}" elements))
@@ -205,13 +213,14 @@ characters in string S to STREAM."
 
                    (:unary-prefix (op expr)
                                   (with-output-to-string (out)
-                                    (setf op (operator-string op))
-                                    (write-string op out)
-                                    (when (char>= (char op 0) #\A)
-                                      (write-char #\Space out))
-                                    (if (eq (car expr) :num)
-                                        (write-string (gencode expr) out)
-                                        (write-string (parenthesize expr #'dot-call-parens) out))))
+                                    (let ((op (operator-string op)))
+                                      (declare (type simple-string op))
+                                      (write-string op out)
+                                      (when (char>= (char op 0) #\A)
+                                        (write-char #\Space out))
+                                      (if (eq (car expr) :num)
+                                          (write-string (gencode expr) out)
+                                          (write-string (parenthesize expr #'dot-call-parens) out)))))
 
                    (:unary-postfix (op expr)
                                    (stick (if (eq (car expr) :num)
@@ -219,15 +228,16 @@ characters in string S to STREAM."
                                               (parenthesize expr #'dot-call-parens))
                                           (operator-string op)))
 
-                   (:num (n) (cond
-                               ((= (floor n) n) (ppcre:regex-replace "000+$"
-                                                                     (format nil "~D" (floor n))
-                                                                     (lambda(str s e ms me rs re)
-                                                                       (declare (ignore str s e rs re))
-                                                                       (format nil "e~A" (- me ms)))))
-                               (t (ppcre:regex-replace "^0\."
-                                                       (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
-                                                       "."))))
+                   (:num (n)
+                         (cond
+                           ((= (floor n) n) (ppcre:regex-replace "000+$"
+                                                                 (format nil "~D" (floor n))
+                                                                 (lambda(str s e ms me rs re)
+                                                                   (declare (ignore str s e rs re))
+                                                                   (format nil "e~A" (- me ms)))))
+                           (t (ppcre:regex-replace "^0\."
+                                                   (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
+                                                   "."))))
 
                    (:string (str) (quote-string str))
 
@@ -327,5 +337,13 @@ characters in string S to STREAM."
                    (:switch (expr body)
                             (add-spaces "switch" (stick "(" (gencode expr) ")")
                                         (format-switch-body body))))))
+
+        (declare (inline indent
+                         precedence
+                         discard-empty-blocks
+                         parenthesize
+                         make-name
+                         make-then
+                         join))
 
         (gencode ast)))))

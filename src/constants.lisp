@@ -26,8 +26,6 @@
 (defun operator-string (op)
   (string-downcase (string op)))
 
-(defun precedence (op) (gethash op *precedence*))
-
 (defun dot-call-parens (expr)
   (not (member (car expr) *codegen-dot-call-no-parens*)))
 
