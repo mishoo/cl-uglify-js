@@ -19,15 +19,8 @@
 (defparameter *codegen-beautify* t)
 (defparameter *codegen-tl-newline* (format nil "~%~%"))
 (defparameter *codegen-newline* (format nil "~%"))
-(defparameter *codegen-dot-call-no-parens* '(:name :array :string :dot :sub :call :regexp))
 
 (defparameter *precedence* parse-js::*precedence*)
-
-(defun operator-string (op)
-  (string-downcase (string op)))
-
-(defun dot-call-parens (expr)
-  (not (member (car expr) *codegen-dot-call-no-parens*)))
 
 (let ((reserved (list
                  "abstract"
@@ -90,6 +83,7 @@
                  "while"
                  "with")))
   (defun is-identifier (name)
+    (declare (inline is-identifier))
     (and (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name)
          (not (member name reserved :test #'string=)))))
 

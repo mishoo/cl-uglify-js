@@ -50,21 +50,35 @@ characters in string S to STREAM."
                       (progn ,@body)
                     (decf indentation ,inc))))
       (labels ((indent (str)
+                 (declare (inline indent))
                  (if beautify
-                     (stick (make-string (round (+ (* indentation indent-level) indent-start)) :initial-element #\Space) str)
+                     (concatenate 'string (make-string (round (+ (* indentation indent-level) indent-start)) :initial-element #\Space) str)
                      str))
 
                (precedence (op)
                  (declare (ftype (function (keyword) (integer 0 100))))
+                 (declare (inline precedence))
                  (gethash op *precedence*))
+
+               (operator-string (op)
+                 (declare (inline operator-string))
+                 (string-downcase (string op)))
+
+               (dot-call-parens (expr)
+                 (declare (inline dot-call-parens))
+                 (case (car expr)
+                   ((:name :array :string :dot :sub :call :regexp) nil)
+                   (t t)))
 
                (discard-empty-blocks (body)
                  (declare (type list body))
+                 (declare (inline discard-empty-blocks))
                  (delete-if (lambda (stmt)
                               (and (eq (car stmt) :block)
                                    (not (cadr stmt)))) body))
 
                (join (list sep1 &optional sep2)
+                 (declare (inline join))
                  (with-output-to-string (out)
                    (loop :for cons :on list
                       :do (write-string (car cons) out)
@@ -87,6 +101,21 @@ characters in string S to STREAM."
                            nl)
                      "{}"))
 
+               (add-spaces (&rest elements)
+                 (declare (type list elements))
+                 (declare (inline add-spaces))
+                 (let ((elements (remove-if #'null elements)))
+                   (cond
+                     (beautify (format nil "~{~A~^ ~}" elements))
+                     (t (apply #'concatenate 'string (loop :for (i next) :on elements
+                                                        :when i :collect i
+                                                        :when (and next
+                                                                   (or
+                                                                    (and (ppcre:scan "(?i)[a-z0-9_$]$" i)
+                                                                         (ppcre:scan "^(?i)[a-z0-9_$]" next))
+                                                                    (and (ppcre:scan "[+-]$" i)
+                                                                         (ppcre:scan "^[+-]" next)))) :collect " "))))))
+
                (format-switch-body (body &optional (nl *codegen-newline*))
                  (if body
                      (let ((body (join (loop :for (c . b) :in body
@@ -103,21 +132,8 @@ characters in string S to STREAM."
                        (join (list "{" body (indent "}")) nl))
                      "{}"))
 
-               (add-spaces (&rest elements)
-                 (declare (type list elements))
-                 (setf elements (delete-if #'null elements))
-                 (cond
-                   (beautify (format nil "~{~A~^ ~}" elements))
-                   (t (apply #'concatenate 'string (loop :for (i next) :on elements
-                                                      :when i :collect i
-                                                      :when (and next
-                                                                 (or
-                                                                  (and (ppcre:scan "(?i)[a-z0-9_$]$" i)
-                                                                       (ppcre:scan "^(?i)[a-z0-9_$]" next))
-                                                                  (and (ppcre:scan "[+-]$" i)
-                                                                       (ppcre:scan "^[+-]" next)))) :collect " ")))))
-
                (parenthesize (expr &rest cases)
+                 (declare (inline parenthesize))
                  (let ((str (gencode expr)))
                    (loop :for i :in cases :do
                       (typecase i
@@ -126,6 +142,7 @@ characters in string S to STREAM."
                       :finally (return str))))
 
                (make-then (th)
+                 (declare (inline make-then))
                  (let ((b th))
                    (loop :for type = (first b) :do
                       (case type
@@ -138,6 +155,7 @@ characters in string S to STREAM."
                         (t (return (gencode th)))))))
 
                (make-name (name)
+                 (declare (inline make-name))
                  (etypecase name
                    (function (funcall name))
                    (string name)))
@@ -337,13 +355,5 @@ characters in string S to STREAM."
                    (:switch (expr body)
                             (add-spaces "switch" (stick "(" (gencode expr) ")")
                                         (format-switch-body body))))))
-
-        (declare (inline indent
-                         precedence
-                         discard-empty-blocks
-                         parenthesize
-                         make-name
-                         make-then
-                         join))
 
         (gencode ast)))))
