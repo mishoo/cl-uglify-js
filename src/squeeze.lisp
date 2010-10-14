@@ -1,9 +1,15 @@
 (in-package #:uglify-js)
 
+(defmacro awhen++ ((var cond) &body body)
+  `(let ((,var ,cond))
+     (when ,var
+       ,@body)))
+
 (flet ((as-number (val)
-         (etypecase val
-           (string (parse-number:parse-number val))
-           (number val))))
+         (handler-case
+             (parse-number:parse-number val)
+           (parse-error ()
+             nil))))
   (defgeneric binary-op (op left right)
     (:method ((op (eql :+)) (left number) (right number))
       (+ left right))
@@ -22,11 +28,15 @@
     (:method ((op (eql :+)) left right)
       (format nil "~A~A" left right))
     (:method (op (left number) (right string))
-      (binary-op op (as-number left) (as-number right)))
+      (awhen++ (right (as-number right))
+        (binary-op op left right)))
     (:method (op (left string) (right number))
-      (binary-op op (as-number left) (as-number right)))
+      (awhen++ (left (as-number left))
+        (binary-op op left right)))
     (:method (op (left string) (right string))
-      (binary-op op (as-number left) (as-number right)))
+      (awhen++ (left (as-number left))
+        (awhen++ (right (as-number right))
+          (binary-op op left right))))
     (:method (op left right))))
 
 (defun ast-squeeze (ast &key
