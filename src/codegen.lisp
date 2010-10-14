@@ -298,7 +298,7 @@ characters in string S to STREAM."
                    (:continue (label) (stick (add-spaces "continue" (when label (make-name label))) ";"))
 
                    (:conditional (cond then else)
-                                 (add-spaces (parenthesize cond :assign :seq)
+                                 (add-spaces (parenthesize cond :assign :seq :conditional)
                                              "?"
                                              (parenthesize then :seq)
                                              ":"
