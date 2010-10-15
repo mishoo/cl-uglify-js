@@ -289,7 +289,8 @@ characters in string S to STREAM."
                                                               (catch 'has-call
                                                                 (ast-walk (expr)
                                                                   (ast-case expr
-                                                                    (:call () (throw 'has-call t))))
+                                                                    (:call () (throw 'has-call t))
+                                                                    (:function () expr)))
                                                                 nil))
                                                             )) out)
                            (when args
