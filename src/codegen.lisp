@@ -160,6 +160,17 @@ characters in string S to STREAM."
                    (function (funcall name))
                    (string name)))
 
+               (make-number (n)
+                 (cond
+                   ((= (floor n) n) (ppcre:regex-replace "000+$"
+                                                         (format nil "~D" (floor n))
+                                                         (lambda(str s e ms me rs re)
+                                                           (declare (ignore str s e rs re))
+                                                           (format nil "e~A" (- me ms)))))
+                   (t (ppcre:regex-replace "^0\."
+                                           (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
+                                           "."))))
+
                (gencode (ast)
                  ;; someone tell me how do I trick Emacs to indent this properly.
                  (ast-case ast
@@ -209,7 +220,7 @@ characters in string S to STREAM."
                                                                                          (not (is-identifier (car p)))))
                                                                                 (quote-string (car p))
                                                                                 (if (numberp (car p))
-                                                                                    (gencode `(:num ,(car p)))
+                                                                                    (make-number (car p))
                                                                                     (car p)))
                                                                             ,(gencode (cdr p)))
                                                                          ": " ":"))) props))
@@ -246,16 +257,7 @@ characters in string S to STREAM."
                                               (parenthesize expr #'dot-call-parens))
                                           (operator-string op)))
 
-                   (:num (n)
-                         (cond
-                           ((= (floor n) n) (ppcre:regex-replace "000+$"
-                                                                 (format nil "~D" (floor n))
-                                                                 (lambda(str s e ms me rs re)
-                                                                   (declare (ignore str s e rs re))
-                                                                   (format nil "e~A" (- me ms)))))
-                           (t (ppcre:regex-replace "^0\."
-                                                   (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
-                                                   "."))))
+                   (:num (n) (make-number n))
 
                    (:string (str) (quote-string str))
 
