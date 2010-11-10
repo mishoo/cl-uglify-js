@@ -136,9 +136,8 @@
                                      (when ca
                                        ;; only when the catch block is present we need to deal with names
                                        `(:try ,(walk tr)
-                                              ,(with-new-scope
-                                                `(,(wrap-name (car ca) :define t)
-                                                   ,@(walk (cdr ca))))
+                                              (,(wrap-name (car ca) :define t)
+                                                ,@(walk (cdr ca)))
                                               ,(walk fi))))
                                (:name (name)
                                       (when (string= name "eval")
