@@ -70,6 +70,7 @@
                  "super"
                  "switch"
                  "synchronized"
+                 "this"
                  "throw"
                  "throws"
                  "transient"
