@@ -43,7 +43,8 @@ characters in string S to STREAM."
                      (indent-level *codegen-indent-level*)
                      (indent-start *codegen-indent-start*)
                      (quote-keys *codegen-quote-keys*))
-  (let ((indentation 0))
+  (let ((indentation 0)
+        (stack nil))
     (macrolet ((with-indent (inc &body body)
                  `(prog2
                       (incf indentation ,inc)
@@ -64,9 +65,18 @@ characters in string S to STREAM."
                  (declare (inline operator-string))
                  (string-downcase (string op)))
 
-               (dot-call-parens (expr)
-                 (declare (inline dot-call-parens))
+               (needs-parens (expr)
                  (case (car expr)
+                   (:function           ; dot/call on a function
+                                        ; requires the parens only
+                                        ; when the function identifier
+                                        ; appears as the first "thing"
+                                        ; in a statement.
+                    (loop
+                       :for (this p) :on stack
+                       :when (eq (car p) :stat) :do (return t)
+                       :unless (and (eq (car p) :seq)
+                                    (eq (cadr p) this)) :do (return nil)))
                    ((:name :array :string :dot :sub :call :regexp) nil)
                    (t t)))
 
@@ -173,190 +183,193 @@ characters in string S to STREAM."
 
                (gencode (ast)
                  ;; someone tell me how do I trick Emacs to indent this properly.
-                 (ast-case ast
+                 (push ast stack)
+                 (prog1
+                     (ast-case ast
 
-                   (:toplevel (body) (join (mapcar #'indent
-                                                   (mapcar #'gencode
-                                                           (discard-empty-blocks body)))
-                                           *codegen-tl-newline*))
+                       (:toplevel (body) (join (mapcar #'indent
+                                                       (mapcar #'gencode
+                                                               (discard-empty-blocks body)))
+                                               *codegen-tl-newline*))
 
-                   (:block (body) (format-body body))
+                       (:block (body) (format-body body))
 
-                   ((:var :const) (defs)
-                    (stick (ecase (car ast)
-                             (:var "var ")
-                             (:const "const "))
-                           (join (mapcar (lambda (def)
-                                           (if (cdr def)
-                                               (add-spaces (make-name (car def)) "=" (gencode (cdr def)))
-                                               (make-name (car def)))) defs)
-                                 ", " ",")
-                           ";"))
+                       ((:var :const) (defs)
+                        (stick (ecase (car ast)
+                                 (:var "var ")
+                                 (:const "const "))
+                               (join (mapcar (lambda (def)
+                                               (if (cdr def)
+                                                   (add-spaces (make-name (car def)) "=" (gencode (cdr def)))
+                                                   (make-name (car def)))) defs)
+                                     ", " ",")
+                               ";"))
 
-                   (:return (expr) (stick (add-spaces "return" (gencode expr)) ";"))
+                       (:return (expr) (stick (add-spaces "return" (gencode expr)) ";"))
 
-                   (:throw (expr) (stick (add-spaces "throw" (gencode expr)) ";"))
+                       (:throw (expr) (stick (add-spaces "throw" (gencode expr)) ";"))
 
-                   ((:function :defun) (name args body)
-                    (add-spaces (stick (add-spaces "function" (when name
-                                                                (make-name name)))
-                                       "(" (join (mapcar #'make-name args) ", " ",") ")")
-                                (format-body body)))
+                       ((:function :defun) (name args body)
+                        (add-spaces (stick (add-spaces "function" (when name
+                                                                    (make-name name)))
+                                           "(" (join (mapcar #'make-name args) ", " ",") ")")
+                                    (format-body body)))
 
-                   (:stat (stmt)
-                          (stick (gencode stmt) ";"))
+                       (:stat (stmt)
+                              (stick (gencode stmt) ";"))
 
-                   (:array (a)
-                           (if (not a) "[]"
-                               (add-spaces "[" (join (mapcar #'gencode a) ", " ",") "]")))
+                       (:array (a)
+                               (if (not a) "[]"
+                                   (add-spaces "[" (join (mapcar #'gencode a) ", " ",") "]")))
 
-                   (:object (props)
-                            (if (not props) "{}"
-                                (join `("{"
-                                        ,(join (with-indent 1
-                                                 (mapcar (lambda (p)
-                                                           (indent (join `(,(if (or quote-keys
-                                                                                    (and (stringp (car p))
-                                                                                         (not (is-identifier (car p)))))
-                                                                                (quote-string (car p))
-                                                                                (if (numberp (car p))
-                                                                                    (make-number (car p))
-                                                                                    (car p)))
-                                                                            ,(gencode (cdr p)))
-                                                                         ": " ":"))) props))
-                                               #.(format nil ",~%") ",")
-                                        ,(indent "}")) *codegen-newline*)))
+                       (:object (props)
+                                (if (not props) "{}"
+                                    (join `("{"
+                                            ,(join (with-indent 1
+                                                     (mapcar (lambda (p)
+                                                               (indent (join `(,(if (or quote-keys
+                                                                                        (and (stringp (car p))
+                                                                                             (not (is-identifier (car p)))))
+                                                                                    (quote-string (car p))
+                                                                                    (if (numberp (car p))
+                                                                                        (make-number (car p))
+                                                                                        (car p)))
+                                                                                ,(gencode (cdr p)))
+                                                                             ": " ":"))) props))
+                                                   #.(format nil ",~%") ",")
+                                            ,(indent "}")) *codegen-newline*)))
 
-                   (:binary (op left right)
-                            (let ((lvalue (gencode left))
-                                  (rvalue (gencode right)))
-                              (when (or (member (car left) '(:assign :conditional :seq))
-                                        (and (eq (car left) :binary)
-                                             (> (precedence op) (precedence (cadr left)))))
-                                (setf lvalue (format nil "(~A)" lvalue)))
-                              (when (or (member (car right) '(:assign :conditional :seq))
-                                        (and (eq (car right) :binary)
-                                             (>= (precedence op) (precedence (cadr right)))))
-                                (setf rvalue (format nil "(~A)" rvalue)))
-                              (add-spaces lvalue (operator-string op) rvalue)))
+                       (:binary (op left right)
+                                (let ((lvalue (gencode left))
+                                      (rvalue (gencode right)))
+                                  (when (or (member (car left) '(:assign :conditional :seq))
+                                            (and (eq (car left) :binary)
+                                                 (> (precedence op) (precedence (cadr left)))))
+                                    (setf lvalue (format nil "(~A)" lvalue)))
+                                  (when (or (member (car right) '(:assign :conditional :seq))
+                                            (and (eq (car right) :binary)
+                                                 (>= (precedence op) (precedence (cadr right)))))
+                                    (setf rvalue (format nil "(~A)" rvalue)))
+                                  (add-spaces lvalue (operator-string op) rvalue)))
 
-                   (:unary-prefix (op expr)
-                                  (with-output-to-string (out)
-                                    (let ((op (operator-string op)))
-                                      (declare (type simple-string op))
-                                      (write-string op out)
-                                      (when (char>= (char op 0) #\A)
-                                        (write-char #\Space out))
-                                      (if (member (car expr) '(:num :unary-prefix))
-                                          (write-string (gencode expr) out)
-                                          (write-string (parenthesize expr #'dot-call-parens) out)))))
+                       (:unary-prefix (op expr)
+                                      (with-output-to-string (out)
+                                        (let ((op (operator-string op)))
+                                          (declare (type simple-string op))
+                                          (write-string op out)
+                                          (when (char>= (char op 0) #\A)
+                                            (write-char #\Space out))
+                                          (if (member (car expr) '(:num :unary-prefix))
+                                              (write-string (gencode expr) out)
+                                              (write-string (parenthesize expr #'needs-parens) out)))))
 
-                   (:unary-postfix (op expr)
-                                   (stick (if (member (car expr) '(:num :unary-postfix))
-                                              (gencode expr)
-                                              (parenthesize expr #'dot-call-parens))
-                                          (operator-string op)))
+                       (:unary-postfix (op expr)
+                                       (stick (if (member (car expr) '(:num :unary-postfix))
+                                                  (gencode expr)
+                                                  (parenthesize expr #'needs-parens))
+                                              (operator-string op)))
 
-                   (:num (n) (make-number n))
+                       (:num (n) (make-number n))
 
-                   (:string (str) (quote-string str))
+                       (:string (str) (quote-string str))
 
-                   (:name (name) (make-name name))
+                       (:name (name) (make-name name))
 
-                   (:atom (a) (string-downcase (string a)))
+                       (:atom (a) (string-downcase (string a)))
 
-                   (:regexp (pattern modifiers)
-                            (stick "/" (with-output-to-string (out)
-                                         (write-regexp pattern out)) "/" modifiers))
+                       (:regexp (pattern modifiers)
+                                (stick "/" (with-output-to-string (out)
+                                             (write-regexp pattern out)) "/" modifiers))
 
-                   (:try (tr ca fi)
-                         (add-spaces "try" (gencode tr)
-                                     (when ca (add-spaces "catch" (stick "(" (make-name (car ca)) ")") (gencode (cdr ca))))
-                                     (when fi (add-spaces "finally" (gencode fi)))))
+                       (:try (tr ca fi)
+                             (add-spaces "try" (gencode tr)
+                                         (when ca (add-spaces "catch" (stick "(" (make-name (car ca)) ")") (gencode (cdr ca))))
+                                         (when fi (add-spaces "finally" (gencode fi)))))
 
-                   (:assign (op left right)
-                            (add-spaces (gencode left)
-                                        (if (eq op t)
-                                            "="
-                                            (stick (operator-string op) "="))
-                                        (gencode right)))
+                       (:assign (op left right)
+                                (add-spaces (gencode left)
+                                            (if (eq op t)
+                                                "="
+                                                (stick (operator-string op) "="))
+                                            (gencode right)))
 
-                   (:new (ctor args)
-                         (with-output-to-string (out)
-                           (write-string
-                            (add-spaces "new" (parenthesize ctor :seq :binary :conditional :assign
-                                                            (lambda (expr)
-                                                              (catch 'has-call
-                                                                (ast-walk (expr)
-                                                                  (ast-case expr
-                                                                    (:call () (throw 'has-call t))
-                                                                    (:function () expr)))
-                                                                nil))
-                                                            )) out)
-                           (when args
-                             (write-string (stick "(" (join (mapcar #'gencode args) ", " ",") ")") out))))
+                       (:new (ctor args)
+                             (with-output-to-string (out)
+                               (write-string
+                                (add-spaces "new" (parenthesize ctor :seq :binary :conditional :assign
+                                                                (lambda (expr)
+                                                                  (catch 'has-call
+                                                                    (ast-walk (expr)
+                                                                      (ast-case expr
+                                                                        (:call () (throw 'has-call t))
+                                                                        (:function () expr)))
+                                                                    nil))
+                                                                )) out)
+                               (when args
+                                 (write-string (stick "(" (join (mapcar #'gencode args) ", " ",") ")") out))))
 
-                   (:break (label) (stick (add-spaces "break" (when label (make-name label))) ";"))
+                       (:break (label) (stick (add-spaces "break" (when label (make-name label))) ";"))
 
-                   (:continue (label) (stick (add-spaces "continue" (when label (make-name label))) ";"))
+                       (:continue (label) (stick (add-spaces "continue" (when label (make-name label))) ";"))
 
-                   (:conditional (cond then else)
-                                 (add-spaces (parenthesize cond :assign :seq :conditional)
-                                             "?"
-                                             (parenthesize then :seq)
-                                             ":"
-                                             (parenthesize else :seq)))
+                       (:conditional (cond then else)
+                                     (add-spaces (parenthesize cond :assign :seq :conditional)
+                                                 "?"
+                                                 (parenthesize then :seq)
+                                                 ":"
+                                                 (parenthesize else :seq)))
 
-                   (:call (expr args)
-                          (stick (parenthesize expr #'dot-call-parens)
-                                 "(" (join (mapcar #'gencode args) ", " ",") ")"))
+                       (:call (expr args)
+                              (stick (parenthesize expr #'needs-parens)
+                                     "(" (join (mapcar #'gencode args) ", " ",") ")"))
 
-                   (:dot (expr prop)
-                         (stick (parenthesize expr #'dot-call-parens) "." prop))
+                       (:dot (expr prop)
+                             (stick (parenthesize expr #'needs-parens) "." prop))
 
-                   (:if (cond then else)
-                        (apply #'add-spaces `("if" ,(stick "(" (gencode cond) ")")
-                                                   ,(if else (make-then then) (gencode then))
-                                                   ,@(when else `("else" ,(gencode else))))))
+                       (:if (cond then else)
+                            (apply #'add-spaces `("if" ,(stick "(" (gencode cond) ")")
+                                                       ,(if else (make-then then) (gencode then))
+                                                       ,@(when else `("else" ,(gencode else))))))
 
-                   (:for (init cond step body)
-                         (let ((args (join (list (if init (ppcre:regex-replace ";+$" (gencode init) "") "")
-                                                 (if cond (ppcre:regex-replace ";+$" (gencode cond) "") "")
-                                                 (if step (ppcre:regex-replace ";+$" (gencode step) "") ""))
-                                           "; " ";")))
-                           (when (string= args "; ; ") (setf args ";;"))
-                           (add-spaces "for" (stick "(" args ")")
-                                       (gencode body))))
+                       (:for (init cond step body)
+                             (let ((args (join (list (if init (ppcre:regex-replace ";+$" (gencode init) "") "")
+                                                     (if cond (ppcre:regex-replace ";+$" (gencode cond) "") "")
+                                                     (if step (ppcre:regex-replace ";+$" (gencode step) "") ""))
+                                               "; " ";")))
+                               (when (string= args "; ; ") (setf args ";;"))
+                               (add-spaces "for" (stick "(" args ")")
+                                           (gencode body))))
 
-                   (:for-in (has-var key hash body)
-                            (with-output-to-string (out)
-                              (write-string (add-spaces "for" "(") out)
-                              (when has-var (write-string "var " out))
-                              (write-string (add-spaces (stick (make-name key) " in " (gencode hash) ")")
-                                                        (gencode body)) out)))
+                       (:for-in (has-var key hash body)
+                                (with-output-to-string (out)
+                                  (write-string (add-spaces "for" "(") out)
+                                  (when has-var (write-string "var " out))
+                                  (write-string (add-spaces (stick (make-name key) " in " (gencode hash) ")")
+                                                            (gencode body)) out)))
 
-                   (:while (cond body)
-                           (add-spaces "while" (stick "(" (gencode cond) ")")
-                                       (gencode body)))
+                       (:while (cond body)
+                               (add-spaces "while" (stick "(" (gencode cond) ")")
+                                           (gencode body)))
 
-                   (:with (expr body)
-                          (add-spaces "with" (stick "(" (gencode expr) ")")
-                                      (gencode body)))
+                       (:with (expr body)
+                              (add-spaces "with" (stick "(" (gencode expr) ")")
+                                          (gencode body)))
 
-                   (:do (cond body)
-                        (add-spaces "do" (gencode body) "while" (stick "(" (gencode cond) ");")))
+                       (:do (cond body)
+                            (add-spaces "do" (gencode body) "while" (stick "(" (gencode cond) ");")))
 
-                   (:sub (expr sub)
-                         (stick (parenthesize expr #'dot-call-parens) "[" (gencode sub) "]"))
+                       (:sub (expr sub)
+                             (stick (parenthesize expr #'needs-parens) "[" (gencode sub) "]"))
 
-                   (:seq (one two)
-                         (join (list (gencode one) (gencode two)) ", " ","))
+                       (:seq (one two)
+                             (join (list (gencode one) (gencode two)) ", " ","))
 
-                   (:label (label body)
-                           (add-spaces (stick (when label (make-name label)) ":") (gencode body)))
+                       (:label (label body)
+                               (add-spaces (stick (when label (make-name label)) ":") (gencode body)))
 
-                   (:switch (expr body)
-                            (add-spaces "switch" (stick "(" (gencode expr) ")")
-                                        (format-switch-body body))))))
+                       (:switch (expr body)
+                                (add-spaces "switch" (stick "(" (gencode expr) ")")
+                                            (format-switch-body body))))
+                   (pop stack))))
 
         (gencode ast)))))
