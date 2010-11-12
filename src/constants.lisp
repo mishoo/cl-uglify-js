@@ -82,11 +82,14 @@
                  "void"
                  "volatile"
                  "while"
-                 "with")))
+                 "with"))
+      (hash (make-hash-table :test #'equal)))
+  (loop :for i :in reserved
+     :do (setf (gethash i hash) t))
   (defun is-identifier (name)
     (declare (inline is-identifier))
-    (and (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name)
-         (not (member name reserved :test #'string=)))))
+    (and (not (gethash name hash))
+         (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name))))
 
 (defun curry (func &rest a1)
   (lambda (&rest a2)
