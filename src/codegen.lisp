@@ -275,7 +275,13 @@ characters in string S to STREAM."
 
                        (:name (name) (make-name name))
 
-                       (:atom (a) (string-downcase (string a)))
+                       (:atom (a)
+                              (ecase a
+                                (:true (if beautify "true" "!0"))
+                                (:false (if beautify "false" "!1"))
+                                (:null "null")
+                                (:undefined "undefined")
+                                (t (string-downcase (string a)))))
 
                        (:regexp (pattern modifiers)
                                 (stick "/" (with-output-to-string (out)
