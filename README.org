@@ -28,6 +28,7 @@ See the [[http://github.com/mishoo/UglifyJS][UglifyJS]] page for more informatio
 - [[http://marijn.haverbeke.nl/parse-js/][parse-js]]
 - [[http://weitz.de/cl-ppcre/][cl-ppcre]]
 - [[http://www.cliki.net/PARSE-NUMBER][parse-number]]
+- [[http://common-lisp.net/project/iterate/][iterate]]
 
 I only tested it on SBCL.
 
