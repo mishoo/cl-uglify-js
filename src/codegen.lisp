@@ -297,7 +297,7 @@ characters in string S to STREAM."
                                             (if (eq op t)
                                                 "="
                                                 (stick (operator-string op) "="))
-                                            (gencode right)))
+                                            (parenthesize right :seq)))
 
                        (:new (ctor args)
                              (with-output-to-string (out)
