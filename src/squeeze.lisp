@@ -79,28 +79,27 @@
 (defun negate (c)
   (flet ((not-c ()
            `(:unary-prefix :! ,c)))
-    (ast-case c
-      (:unary-prefix (op expr)
-                     (if (eq op :!) expr (not-c)))
-      (:binary (op left right)
-               (case op
-                 (:< `(:binary :>= ,left ,right))
-                 (:<= `(:binary :> ,left ,right))
-                 (:> `(:binary :<= ,left ,right))
-                 (:>= `(:binary :< ,left ,right))
-                 (:== `(:binary :!= ,left ,right))
-                 (:!= `(:binary :== ,left ,right))
-                 (:=== `(:binary :!== ,left ,right))
-                 (:!== `(:binary :=== ,left ,right))
-                 (:|\|\|| (best-of (not-c) `(:binary :&& ,(negate left) ,(negate right))))
-                 (:&& (best-of (not-c) `(:binary :|\|\|| ,(negate left) ,(negate right))))
-                 (t (not-c))))
-      (:atom (what)
-             (case what
-               (:true `(:num 0))
-               (:false `(:num 1))
-               (t (not-c))))
-      (t () (not-c)))))
+    (or (ast-case c
+          (:unary-prefix (op expr)
+                         (when (eq op :!)
+                           expr))
+          (:binary (op left right)
+                   (case op
+                     (:< `(:binary :>= ,left ,right))
+                     (:<= `(:binary :> ,left ,right))
+                     (:> `(:binary :<= ,left ,right))
+                     (:>= `(:binary :< ,left ,right))
+                     (:== `(:binary :!= ,left ,right))
+                     (:!= `(:binary :== ,left ,right))
+                     (:=== `(:binary :!== ,left ,right))
+                     (:!== `(:binary :=== ,left ,right))
+                     (:|\|\|| (best-of (not-c) `(:binary :&& ,(negate left) ,(negate right))))
+                     (:&& (best-of (not-c) `(:binary :|\|\|| ,(negate left) ,(negate right))))))
+          (:atom (what)
+                 (case what
+                   (:true `(:num 0))
+                   (:false `(:num 1)))))
+        (not-c))))
 
 (defun ast-squeeze (ast &key
                     (sequences t)
@@ -305,7 +304,7 @@
                               (is-constant right))
                      (let ((val (binary-op op (cadr left) (cadr right))))
                        (when val
-                         (setf ret (best-of ret `(,(etypecase val (string :string) (number :num)) ,val)))))) 
+                         (setf ret (best-of ret `(,(etypecase val (string :string) (number :num)) ,val))))))
                    ret))
 
         (:unary-prefix (op ex)
