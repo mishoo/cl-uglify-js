@@ -327,7 +327,7 @@ characters in string S to STREAM."
 
                        (:call (expr args)
                               (stick (parenthesize expr #'needs-parens)
-                                     "(" (join (mapcar #'gencode args) ", " ",") ")"))
+                                     "(" (join (mapcar (lambda (expr) (parenthesize expr :seq)) args) ", " ",") ")"))
 
                        (:dot (expr prop)
                              (stick (parenthesize expr #'needs-parens) "." prop))
