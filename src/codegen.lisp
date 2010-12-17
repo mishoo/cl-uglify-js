@@ -220,7 +220,8 @@ characters in string S to STREAM."
 
                        (:array (a)
                                (if (not a) "[]"
-                                   (add-spaces "[" (join (mapcar #'gencode a) ", " ",") "]")))
+                                   (add-spaces "[" (join (mapcar (lambda (expr)
+                                                                   (parenthesize expr :seq)) a) ", " ",") "]")))
 
                        (:object (props)
                                 (if (not props) "{}"
