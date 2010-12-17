@@ -94,3 +94,16 @@
 (defun curry (func &rest a1)
   (lambda (&rest a2)
     (apply func (append a1 a2))))
+
+(defstruct topval (v nil))
+
+(defun mymap (func list)
+  (iter (for i in list)
+        (for v = (funcall func i))
+        (finally (return (nconc one two)))
+        ;; because iterate has a nasty bug: if you try to collect into
+        ;; the *same* list, sometimes at start, sometimes at end,
+        ;; you'll get a "nil is not a cons" error.
+        (if (typep v 'topval)
+            (collect (topval-v v) into one at start)
+            (collect v into two))))
