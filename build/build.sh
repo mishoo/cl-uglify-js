@@ -5,6 +5,7 @@ DIR=`dirname $SCRIPT`
 
 buildapp \
     --eval "(proclaim '(optimize (speed 3) (safety 0) (debug 0)))" \
+    --asdf-tree ~/quicklisp \
     --asdf-path ~/asd \
     --load-system cl-uglify-js \
     --load-system unix-options \
