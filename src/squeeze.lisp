@@ -309,4 +309,9 @@
 
         (:unary-prefix (op ex)
                        (when (eq op :!)
-                         (best-of expr (negate ex))))))))
+                         (best-of expr (negate ex))))
+
+        (:atom (val)
+               (case val
+                 (:true '(:unary-prefix :! (:num 0)))
+                 (:false '(:unary-prefix :! (:num 1)))))))))
