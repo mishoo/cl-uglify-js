@@ -7,20 +7,19 @@
   (apply #'concatenate 'string (delete-if #'null elements)))
 
 ;;; <cl-json> --- the following is taken from cl-json
-(defun write-json-chars (s stream)
+(defun write-json-chars (quote s stream)
   "Write JSON representations (chars or escape sequences) of
 characters in string S to STREAM."
+  (write-char quote stream)
   (loop for ch across s
      for code = (char-code ch)
      with special
-     if (setq special (car (rassoc ch +json-lisp-escaped-chars+)))
+     if (eq ch quote)
+       do (write-char #\\ stream) (write-char ch stream)
+     else if (setq special (car (rassoc ch +json-lisp-escaped-chars+)))
        do (write-char #\\ stream) (write-char special stream)
-     else if (< #x1f code #x7f)
-       do (write-char ch stream)
-     else
-       do (let ((special '#.(rassoc-if #'consp +json-lisp-escaped-chars+)))
-            (destructuring-bind (esc . (width . radix)) special
-              (format stream "\\~C~V,V,'0R" esc radix width code)))))
+     else do (write-char ch stream))
+  (write-char quote stream))
 ;;; </cl-json>
 
 (defun write-regexp (s stream)
@@ -34,9 +33,9 @@ characters in string S to STREAM."
 (defun quote-string (str)
   (declare (inline quote-string))
   (with-output-to-string (out)
-    (write-char #\" out)
-    (write-json-chars str out)
-    (write-char #\" out)))
+    (write-json-chars (if (<= (count #\" str) (count #\' str))
+                          #\"
+                          #\') str out)))
 
 (defun ast-gen-code (ast &key
                      (beautify *codegen-beautify*)
