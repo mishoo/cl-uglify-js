@@ -4,11 +4,13 @@
 (in-package #:cl-uglify-js.main)
 
 (defun uglify-stream (stream &key (beautify t) no-sequences keep-dead-code mangle-toplevel)
-  (ast-gen-code (ast-mangle (ast-squeeze (parse-js:parse-js stream)
-                                         :sequences (not no-sequences)
-                                         :dead-code (not keep-dead-code))
-                            :toplevel mangle-toplevel)
-                :beautify beautify))
+  (ast-gen-code
+   (ast-squeeze
+    (ast-mangle (parse-js:parse-js stream)
+                :sequences (not no-sequences)
+                :dead-code (not keep-dead-code))
+    :toplevel mangle-toplevel)
+   :beautify beautify))
 
 (defun main (argv)
   (declare (ignore argv))
