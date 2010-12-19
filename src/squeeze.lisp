@@ -309,7 +309,15 @@
 
         (:unary-prefix (op ex)
                        (when (eq op :!)
-                         (best-of expr (negate ex))))
+                         (let ((ex (walk ex)))
+                           (when (and (eq (car ex) :unary-prefix)
+                                      (eq (cadr ex) :!))
+                             (let ((p (cadr stack)))
+                               (when (and (eq (car p) :unary-prefix)
+                                          (eq (cadr p) :!))
+                                 (return (caddr ex)))
+                               (return `(:unary-prefix :! ,ex))))
+                           (best-of expr (negate ex)))))
 
         (:atom (val)
                (case val
