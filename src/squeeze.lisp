@@ -317,7 +317,7 @@
                                           (eq (cadr p) :!))
                                  (return (caddr ex)))
                                (return `(:unary-prefix :! ,ex))))
-                           (best-of expr (negate ex)))))
+                           (best-of `(:unary-prefix :! ,ex) (negate ex)))))
 
         (:atom (val)
                (case val
