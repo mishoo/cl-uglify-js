@@ -6,7 +6,7 @@
 (defun uglify-stream (stream &key (beautify t) no-sequences keep-dead-code mangle-toplevel)
   (ast-gen-code
    (ast-squeeze
-    (ast-mangle (parse-js:parse-js stream)
+    (ast-mangle (parse-js:parse-js stream :ecma-version 5)
                 :sequences (not no-sequences)
                 :dead-code (not keep-dead-code))
     :toplevel mangle-toplevel)

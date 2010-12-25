@@ -180,6 +180,15 @@ characters in string S to STREAM."
                                            (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
                                            "."))))
 
+               (quote-object-prop (prop)
+                 (if (or quote-keys
+                         (and (stringp prop)
+                              (not (is-identifier prop))))
+                     (quote-string prop)
+                     (if (numberp prop)
+                         (make-number prop)
+                         prop)))
+
                (gencode (ast)
                  ;; someone tell me how do I trick Emacs to indent this properly.
                  (push ast stack)
@@ -227,15 +236,19 @@ characters in string S to STREAM."
                                     (join `("{"
                                             ,(join (with-indent 1
                                                      (mapcar (lambda (p)
-                                                               (indent (join `(,(if (or quote-keys
-                                                                                        (and (stringp (car p))
-                                                                                             (not (is-identifier (car p)))))
-                                                                                    (quote-string (car p))
-                                                                                    (if (numberp (car p))
-                                                                                        (make-number (car p))
-                                                                                        (car p)))
-                                                                                ,(gencode (cdr p)))
-                                                                             ": " ":"))) props))
+                                                               (indent
+                                                                (case (cadr p)
+                                                                  ((:get :set) (add-spaces
+                                                                                (stick
+                                                                                 (add-spaces (string-downcase (string (cadr p)))
+                                                                                             (quote-object-prop (car p)))
+                                                                                 "("
+                                                                                 (join (mapcar #'make-name (elt p 4)) ", " ",")
+                                                                                 ")")
+                                                                                (format-body (elt p 5))))
+                                                                  (t (join `(,(quote-object-prop (car p))
+                                                                              ,(gencode (cdr p)))
+                                                                           ": " ":"))))) props))
                                                    #.(format nil ",~%") ",")
                                             ,(indent "}")) *codegen-newline*)))
 
