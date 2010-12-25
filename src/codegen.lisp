@@ -243,9 +243,9 @@ characters in string S to STREAM."
                                                                                  (add-spaces (string-downcase (string (cadr p)))
                                                                                              (quote-object-prop (car p)))
                                                                                  "("
-                                                                                 (join (mapcar #'make-name (elt p 4)) ", " ",")
+                                                                                 (join (mapcar #'make-name (fifth p)) ", " ",")
                                                                                  ")")
-                                                                                (format-body (elt p 5))))
+                                                                                (format-body (sixth p))))
                                                                   (t (join `(,(quote-object-prop (car p))
                                                                               ,(gencode (cdr p)))
                                                                            ": " ":"))))) props))
