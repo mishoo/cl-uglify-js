@@ -148,12 +148,7 @@
                                 (:name (name)
                                        (when (string= name "eval")
                                          (setf having-eval (pushnew *current-scope* having-eval)))
-                                       `(:name ,(wrap-name name :reference t)))
-                                (:for-in (has-var name hash body)
-                                         `(:for-in ,has-var
-                                                   ,(wrap-name name :define has-var :reference (not has-var))
-                                                   ,(walk hash)
-                                                   ,(walk body)))))))
+                                       `(:name ,(wrap-name name :reference t)))))))
 
               ;; propagate "uses-eval" to toplevel scope
               (dolist (scope having-eval)

@@ -359,11 +359,14 @@ characters in string S to STREAM."
                                (add-spaces "for" (stick "(" args ")")
                                            (gencode body))))
 
-                       (:for-in (has-var key hash body)
+                       (:for-in (var key hash body)
                                 (with-output-to-string (out)
                                   (write-string (add-spaces "for" "(") out)
-                                  (when has-var (write-string "var " out))
-                                  (write-string (add-spaces (stick (make-name key) " in " (gencode hash) ")")
+                                  (write-string (add-spaces (if var
+                                                                (ppcre:regex-replace ";+$" (gencode var) "")
+                                                                (gencode key))
+                                                            "in"
+                                                            (stick (gencode hash) ")")
                                                             (gencode body)) out)))
 
                        (:while (cond body)
