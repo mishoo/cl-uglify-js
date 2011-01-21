@@ -345,7 +345,10 @@ characters in string S to STREAM."
                                      "(" (join (mapcar (lambda (expr) (parenthesize expr :seq)) args) ", " ",") ")"))
 
                        (:dot (expr prop)
-                             (stick (parenthesize expr #'needs-parens) "." prop))
+                             (stick (if (eq (car expr) :num)
+                                        (stick (gencode expr) ".")
+                                        (parenthesize expr #'needs-parens))
+                                    "." prop))
 
                        (:if (cond then else)
                             (apply #'add-spaces `("if" ,(stick "(" (gencode cond) ")")
