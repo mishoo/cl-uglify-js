@@ -45,7 +45,7 @@
           (if (or overwrite output-file)
               (with-open-file (out (if overwrite input-file output-file)
                                    :direction :output
-                                   :if-exists :overwrite
+                                   :if-exists :supersede
                                    :if-does-not-exist :create)
                 (write-string result out))
               (write-string result *standard-output*)))))))
