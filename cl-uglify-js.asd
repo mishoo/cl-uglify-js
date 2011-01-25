@@ -9,4 +9,5 @@
                          (:file "walker")
                          (:file "mangle")
                          (:file "squeeze")
-                         (:file "codegen")))))
+                         (:file "codegen")
+                         (:file "split")))))

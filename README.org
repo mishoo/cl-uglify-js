@@ -93,6 +93,13 @@ The other arguments only make sense if =beautify= is *true*:
   (i.e. reserved words such as "while").  Pass this *true* to quote all keys
   regardless.
 
+*** split-code (code &optional (maxlen (* 32 1024)))
+
+Given `code' (a string) it will split it by adding a newline every `maxlen'
+(or so) characters.  I found both Firefox and Chrome croak with weird errors
+when the whole code was on a single 680K line, so even if it adds a few more
+bytes this step should be done for safety.  The default `maxlen' is 32K.
+
 ** Compress one file
 
 To compress one file, you would do something like this:

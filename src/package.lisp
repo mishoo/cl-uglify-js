@@ -4,5 +4,6 @@
            #:ast-mangle
            #:ast-squeeze
            #:ast-case
-           #:ast-walk)
+           #:ast-walk
+           #:split-code)
   (:nicknames #:uglify-js))
