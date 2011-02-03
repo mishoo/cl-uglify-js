@@ -76,13 +76,32 @@
           `(:conditional ,cond ,then ,else)
           `(:binary :&& ,cond ,then))))
 
+(defun boolean-expr (expr)
+  (ast-case expr
+    (:unary-prefix (op _) (member op '(:! :delete)))
+    (:binary (op left right)
+             (case op
+               ((:in :instanceof :== :!= :=== :!== :< :<= :> :>=) t)
+               ((:&& :|\|\||) (and (boolean-expr left)
+                                   (boolean-expr right)))))
+    (:conditional (_ left right)
+                  (and (boolean-expr left)
+                       (boolean-expr right)))
+    (:assign (op _ right)
+             (and (eq op t)
+                  (boolean-expr right)))
+    (:seq (_ two)
+          (boolean-expr two))))
+
 (defun negate (c)
   (flet ((not-c ()
            `(:unary-prefix :! ,c)))
     (or (ast-case c
           (:unary-prefix (op expr)
-                         (when (eq op :!)
+                         (when (and (eq op :!) (boolean-expr expr))
                            expr))
+          (:seq (one two)
+                `(:seq ,one ,(negate two)))
           (:binary (op left right)
                    (case op
                      (:< `(:binary :>= ,left ,right))
@@ -310,13 +329,6 @@
         (:unary-prefix (op ex)
                        (when (eq op :!)
                          (let ((ex (walk ex)))
-                           (when (and (eq (car ex) :unary-prefix)
-                                      (eq (cadr ex) :!))
-                             (let ((p (cadr stack)))
-                               (when (and (eq (car p) :unary-prefix)
-                                          (eq (cadr p) :!))
-                                 (return (caddr ex)))
-                               (return `(:unary-prefix :! ,ex))))
                            (best-of `(:unary-prefix :! ,ex) (negate ex)))))
 
         (:atom (val)

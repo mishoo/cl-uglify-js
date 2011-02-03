@@ -1,5 +1,14 @@
 (in-package #:uglify-js)
 
+(defun varlist (names)
+  (iter (for i in names)
+        (case i 
+          (_ (let ((sym (gensym "ignored")))
+               (collect sym into ignored)
+               (collect sym into vars)))
+          (t (collect i into vars)))
+        (finally (return (values vars ignored)))))
+
 (defmacro ast-case (expr &body body)
   (let ((ex (gensym "AST")))
     `(let ((,ex ,expr))
@@ -8,7 +17,11 @@
               :for c = (car i)
               :for a = (cadr i)
               :for b = (cddr i)
-              :if a :collect `(,c (destructuring-bind (&optional ,@a) (cdr ,ex) (block nil ,@b)))
+              :if a :collect (multiple-value-bind (vars ignored) (varlist a)
+                               `(,c (destructuring-bind (&optional ,@vars) (cdr ,ex)
+                                      ,(when ignored
+                                             `(declare (ignore ,@ignored)))
+                                      (block nil ,@b))))
               :else :collect `(,c (block nil ,@b)))))))
 
 (defmacro ast-walk ((ast &optional (expr 'expr) (walk 'walk) stack) &body body)
