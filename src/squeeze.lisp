@@ -103,7 +103,7 @@
           (:seq (one two)
                 `(:seq ,one ,(negate two)))
           (:conditional (cond left right)
-                        `(:conditional ,cond ,(negate right) ,(negate left)))
+                        `(:conditional ,cond ,(negate left) ,(negate right)))
           (:binary (op left right)
                    (case op
                      (:< `(:binary :>= ,left ,right))
