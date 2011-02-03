@@ -263,7 +263,9 @@ characters in string S to STREAM."
                                     (setf lvalue (format nil "(~A)" lvalue)))
                                   (when (or (member (car right) '(:assign :conditional :seq))
                                             (and (eq (car right) :binary)
-                                                 (>= (precedence op) (precedence (cadr right)))))
+                                                 (>= (precedence op) (precedence (cadr right)))
+                                                 (not (and (eq op (cadr right))
+                                                           (member op '(:&& :|\|\|| :*))))))
                                     (setf rvalue (format nil "(~A)" rvalue)))
                                   (add-spaces lvalue (operator-string op) rvalue)))
 
