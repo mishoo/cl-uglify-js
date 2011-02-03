@@ -93,17 +93,17 @@
     (:seq (_ two)
           (boolean-expr two))))
 
-(defun negate (c &optional bool-context)
+(defun negate (c)
   (flet ((not-c ()
            `(:unary-prefix :! ,c)))
     (or (ast-case c
           (:unary-prefix (op expr)
-                         (when (and (eq op :!) (or bool-context (boolean-expr expr)))
+                         (when (and (eq op :!) (boolean-expr expr))
                            expr))
           (:seq (one two)
                 `(:seq ,one ,(negate two)))
           (:conditional (cond left right)
-                        `(:conditional ,(negate cond t) ,right ,left))
+                        `(:conditional ,cond ,(negate right) ,(negate left)))
           (:binary (op left right)
                    (case op
                      (:< `(:binary :>= ,left ,right))
