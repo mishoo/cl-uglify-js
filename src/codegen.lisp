@@ -74,8 +74,8 @@ characters in string S to STREAM."
                     (loop
                        :for (this p) :on stack
                        :when (eq (car p) :stat) :do (return t)
-                       :unless (and (eq (car p) :seq)
-                                    (eq (cadr p) this)) :do (return nil)))
+                       :unless (and (eq (cadr p) this)
+                                    (member (car p) '(:seq :call :binary))) :do (return nil)))
                    ((:name :array :string :dot :sub :call :regexp) nil)
                    (t t)))
 
