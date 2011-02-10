@@ -76,7 +76,6 @@
                  "true"
                  "try"
                  "typeof"
-                 "undefined"
                  "var"
                  "void"
                  "volatile"
