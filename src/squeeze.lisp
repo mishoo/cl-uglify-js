@@ -279,7 +279,8 @@
                  ;; bar; (possibly throw too) we transform into return
                  ;; cond ? foo : bar.
                  ((and (eq (car then) (car else))
-                       (member (car then) '(:return :throw)))
+                       (member (car then) '(:return :throw))
+                       (cadr then) (cadr else))
                   (return (best-of ret `(,(car then) ,(conditional cond (cadr then) (cadr else))))))
                  ;; last special case: if we have an "else" clause and
                  ;; we're sure that the "then" block aborts (ends with
