@@ -87,7 +87,7 @@
   (defun is-identifier (name)
     (declare (inline is-identifier))
     (and (not (gethash name hash))
-         (ppcre:scan "^[a-zA-Z_$][a-zA-Z0-9_$]*$" name))))
+         (ppcre:scan "^(\\p{Letter}|[_$])(\\p{Letter}|[0-9_$])*$" name))))
 
 (defun curry (func &rest a1)
   (lambda (&rest a2)
