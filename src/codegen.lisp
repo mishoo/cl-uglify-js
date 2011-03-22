@@ -66,7 +66,7 @@ characters in string S to STREAM."
 
                (needs-parens (expr)
                  (case (car expr)
-                   (:function           ; dot/call on a function
+                   ((:function :object) ; dot/call on a function
                                         ; requires the parens only
                                         ; when the function identifier
                                         ; appears as the first "thing"
@@ -75,7 +75,7 @@ characters in string S to STREAM."
                        :for (this p) :on stack
                        :when (eq (car p) :stat) :do (return t)
                        :unless (and (eq (cadr p) this)
-                                    (member (car p) '(:seq :call :binary))) :do (return nil)))
+                                    (member (car p) '(:seq :call :dot :sub :conditional))) :do (return nil)))
                    ((:name :array :string :dot :sub :call :regexp) nil)
                    (t t)))
 
@@ -104,7 +104,7 @@ characters in string S to STREAM."
                                                  :for line = (gencode this)
                                                  :when (and (not beautify)
                                                             (not next))
-                                                   :do (setq line (ppcre:regex-replace ";+$" line ""))
+                                                 :do (setq line (ppcre:regex-replace ";+$" line ""))
                                                  :collect (indent line)))
                              ,(indent "}"))
                            nl)
