@@ -12,7 +12,7 @@
     :toplevel mangle-toplevel)
    :beautify beautify))
 
-(defun main (argv)
+(defun main-inner (argv)
   (declare (ignore argv))
   (with-cli-options () (beautify no-sequences no-comment keep-dead-code mangle-toplevel overwrite &free rest)
     (let ((input-file (car rest))
@@ -49,3 +49,13 @@
                                    :if-does-not-exist :create)
                 (write-string result out))
               (write-string result *standard-output*)))))))
+
+(defun main (argv)
+  (handler-case
+    (main-inner argv)
+    (parse-js:js-parse-error (err)
+      (progn (format *error-output*
+                     "parse error at line ~a, column ~a~%"
+                     (parse-js:js-parse-error-line err)
+                     (parse-js:js-parse-error-char err))
+             ""))))
