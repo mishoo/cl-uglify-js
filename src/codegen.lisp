@@ -249,7 +249,7 @@ characters in string S to STREAM."
                                                                                  ")")
                                                                                 (format-body (sixth p))))
                                                                   (t (join `(,(quote-object-prop (car p))
-                                                                              ,(gencode (cdr p)))
+                                                                              ,(parenthesize (cdr p) :seq))
                                                                            ": " ":"))))) props))
                                                    #.(format nil ",~%") ",")
                                             ,(indent "}")) *codegen-newline*)))
