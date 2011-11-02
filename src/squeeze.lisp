@@ -103,7 +103,7 @@
           (:seq (one two)
                 `(:seq ,one ,(negate two)))
           (:conditional (cond left right)
-                        `(:conditional ,cond ,(negate left) ,(negate right)))
+                        (best-of (not-c) `(:conditional ,cond ,(negate left) ,(negate right))))
           (:binary (op left right)
                    (case op
                      (:< `(:binary :>= ,left ,right))
@@ -119,19 +119,14 @@
           (:atom (what)
                  (case what
                    (:true `(:num 0))
-                   (:false `(:num 1)))))
+                   ((:false :null) `(:num 1)))))
         (not-c))))
 
 (defun ast-squeeze (ast &key
                     (sequences t)
                     (dead-code t)
                     &aux stack)
-  (labels ((is-constant (node)
-             (case (car node)
-               ((:string :num) t)
-               (t nil)))
-
-           (in-function ()
+  (labels ((in-function ()
              (loop :for i :in stack
                 :for expr = (car i)
                 :when (member expr '(:function :defun)) :do (return t)
@@ -181,8 +176,8 @@
                                                                 ,(cadr this)))
                                    :else :collect this :and :do (setf prev nil))))
 
-             ;; ;; when we're in a function and not in a loop or switch,
-             ;; ;; and we encounter return, we can sometimes discard it.
+             ;; when we're in a function and not in a loop or switch,
+             ;; and we encounter return, we can sometimes discard it.
              (when (in-function)
                (setf statements
                      (iter (for (stat . rest) on statements)
@@ -307,26 +302,30 @@
                      ,(when fi `(:block ,(tighten (cadr fi) #'walk)))))
 
         (:switch (expr body)
-                 `(:switch ,(walk expr)
-                           ,(loop :for (branch next) :on body
-                               :for case = (walk (car branch))
-                               :for body = (tighten (cdr branch) #'walk)
-                               :for last = (and (not next) (last body))
-                               :when (and last
-                                          (eq (caar last) :break)
-                                          (not (cadar last)))
-                               :do (setq body (butlast body))
-                               :collect `(,case ,@body))))
+          `(:switch ,(walk expr)
+             ,(loop :for (branch next) :on body
+                 :for case = (walk (car branch))
+                 :for body = (tighten (cdr branch) #'walk)
+                 :for last = (and (not next) (last body))
+                 :when (and last
+                            (eq (caar last) :break)
+                            (not (cadar last)))
+                 :do (setq body (butlast body))
+                 :collect `(,case ,@body))))
 
         (:binary (op left right)
                  (setf left (walk left)
                        right (walk right))
                  (let ((ret `(:binary ,op ,left ,right)))
-                   (when (and (is-constant left)
-                              (is-constant right))
-                     (let ((val (binary-op op (cadr left) (cadr right))))
-                       (when val
-                         (setf ret (best-of ret `(,(etypecase val (string :string) (number :num)) ,val))))))
+                   (flet ((is-constant (node)
+                            (case (car node)
+                              ((:string :num) t)
+                              (t nil))))
+                     (when (and (is-constant left)
+                                (is-constant right))
+                       (let ((val (binary-op op (cadr left) (cadr right))))
+                         (when val
+                           (setf ret (best-of ret `(,(etypecase val (string :string) (number :num)) ,val)))))))
                    ret))
 
         (:unary-prefix (op ex)
