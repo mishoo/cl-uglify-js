@@ -177,7 +177,11 @@ characters in string S to STREAM."
                                                            (declare (ignore str s e rs re))
                                                            (format nil "e~A" (- me ms)))))
                    (t (ppcre:regex-replace "^0\."
-                                           (ppcre:regex-replace "\\.e" (format nil "~f" n) "e")
+                                           (ppcre:regex-replace
+                                            "\\.e"
+                                            (let ((*read-default-float-format* 'double-float))
+                                              (format nil "~f" n))
+                                            "e")
                                            "."))))
 
                (quote-object-prop (prop)
