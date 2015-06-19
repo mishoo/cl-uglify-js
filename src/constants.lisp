@@ -3,6 +3,7 @@
 ;;; <cl-json> --- the following is taken from cl-json
 (defparameter +json-lisp-escaped-chars+
   '((#\\ . #\\)
+    (#\/ . #\/)
     (#\b . #\Backspace)
     (#\f . #\)
     (#\n . #\Newline)
