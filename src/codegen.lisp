@@ -18,7 +18,12 @@ characters in string S to STREAM."
        do (write-char #\\ stream) (write-char ch stream)
      else if (setq special (car (rassoc ch +json-lisp-escaped-chars+)))
        do (write-char #\\ stream) (write-char special stream)
-     else do (write-char ch stream))
+     else if (< #x1f code #x7f)
+       do (write-char ch stream)
+     else
+       do (let ((special '#.(rassoc-if #'consp +json-lisp-escaped-chars+)))
+            (destructuring-bind (esc . (width . radix)) special
+              (format stream "\\~C~V,V,'0R" esc radix width code))))
   (write-char quote stream))
 ;;; </cl-json>
 
